@@ -4,10 +4,37 @@ import dataStructure.Node.java;
 import dataStructure.DFA.java;
 import NodeType.java;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.HaehMap;
 
 public class LexCompiler{
 
-    public Node makeTree(){
+    private Map posToNode;
+    private String RE;
+    private String prefix;
+    private DFA dfa;
+    private Node root;
+
+    public DFA makeDFA(String input){
+        input=input+"#";
+        this.RE=input;
+        prefixTransform();
+        makeTree();
+
+        dfa=new DFA();
+        dfa.Dstates=new HashMap<String,Set<Integer>>();
+        firstpos(this.root);
+        Set initSet=this.root.getFirst();
+        dfa.Dstates.put("I0",initSet);
+        do{
+
+        }
+        return null;
+    }
+
+    private Node makeTree(){
         return null;
     }
 
@@ -15,51 +42,95 @@ public class LexCompiler{
         return null;
     }
 
-    private boolean nullable(Node n){
+    private void nullable(Node n){
         if(n.isLeaf()){
             if(n.getIcon()==null){
-                return true;
+                n.setNullable(true);
             }
-            return false;
+            n.setNullable(false);
         }
         if(n.getType()==NodeType.OR){
-            return nullable(n.left()||nullable(n.right()));
+            n.setNullable(nullable(n.getLeft())||nullable(n.getRight()));
         }
         if(n.getType()==NodeType.CAT){
-            return nullable(n.left()&&nullable(n.right()));
+            n.setNullable(nullable(n.getLeft()&&nullable(n.getRight())));
         }
         if(n.getType()==NodeType.STAR){
-            return true;
+            n.setNullable(true);
         }
-        return false;
+        n.setNullable(true);
     }
 
-    private ArrayList<Integer> firstpos(Node n){
-        ArrayList<Integer> result=new ArrayList<Integer>();
+    private void firstpos(Node n){
+        Set<Integer> result=new HashSet();
         if(n.isLeaf()){
             if(n.getIcon()==null){
-                return null;
+                n.setFirst(null);
+                return;
             }
-            result.append(n.getPos());
-            return result;
+            result.add(n.getPos());
         }
         if(n.getType()==NodeType.OR){
-            return nullable(n.left()||nullable(n.right()));
+            result=firstpos(n.getLeft());
+            result.retainAll(n.getRight());
         }
         if(n.getType()==NodeType.CAT){
-            return nullable(n.left()&&nullable(n.right()));
+            if nullable(n.getLeft()){
+                result=firstpos(n.getLeft());
+                result.retainAll(n.getRight());
+            }
+            else{
+                result=firstpos(n.getLeft());
+            }
         }
         if(n.getType()==NodeType.STAR){
-            return true;
+            result=firstpos(n.getLeft());
         }
-        return false;
+        n.setFirst(result);
     }
 
-    private ArrayList<Integer> lastpos(Node n){
-        return null;
+    private Set lastpos(Node n){
+        Set<Integer> result=new HashSet();
+        if(n.isLeaf()){
+            if(n.getIcon()==null){
+                n.setLast(null);
+                return;
+            }
+            result.add(n.getPos());
+        }
+        if(n.getType()==NodeType.OR){
+            result=lastpos(n.left());
+            result.retainAll(n.right());
+        }
+        if(n.getType()==NodeType.CAT){
+            if nullable(n.right()){
+                result=lastpos(n.left());
+                result.retainAll(n.right());
+            }
+            else{
+                result=lastpos(n.right());
+            }
+        }
+        if(n.getType()==NodeType.STAR){
+            result=lastpos(n.left());
+        }
+        n.setLast(result);
     }
 
-    private ArrayList<Integer> followpos(int p){
-        return null;
+    private void followpos(Node n){
+        if(n.getType()==NodeType.CAT){
+            Set toAdd = firstpos(n.getRight());
+            Set host = lastpos(n.getLeft());
+            for(int i:host){
+                posToNode.get(i).setFollow(posToNode.get(i).getFollow.retainAll(toAdd));
+            }
+        }
+        if(n.getType()==NodeType.STAR){
+            Set toAdd=firstpos(n);
+            Set host=lastpos(n);
+            for(int i:host){
+                posToNode.get(i).setFollow(posToNode.get(i).getFollow.retainAll(toAdd));
+            }
+        }
     }
 }
