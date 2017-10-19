@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.HaehMap;
+import java.util.Stack;
 
 public class LexCompiler{
 
@@ -16,6 +17,7 @@ public class LexCompiler{
     private String prefix;
     private DFA dfa;
     private Node root;
+    private Set alphabet;
 
     public DFA makeDFA(String input){
         input=input+"#";
@@ -25,12 +27,67 @@ public class LexCompiler{
 
         dfa=new DFA();
         dfa.Dstates=new HashMap<String,Set<Integer>>();
-        firstpos(this.root);
-        Set initSet=this.root.getFirst();
-        dfa.Dstates.put("I0",initSet);
-        do{
+        dfa.Dtran=new HashMap<String,Map<String,Set<Integer>>>();
+
+        Stack<Node> nstack = new Stack<Node>();
+        Node current = root;
+        for(;;){
+            while(current != null){
+                nstack.push(current);
+                current = current.getLeft();
+            }
+            if(!nstack.empty()){
+                current = nstack.pop();
+                nullable(current);
+                firstpos(current);
+                lastpos(current);
+                followpos(current);
+                current = current.getRight();
+            }
+            else{
+                break;
+            }
+        }
+
+        dfa.Dstates.put("notMarked",root.getFirst());
+        String pre = "I";
+        int i = 0;
+        while(dfa.Dstates.containsKey("notMarked")){
+            Set temp=dfa.Dstates.get("notMarked");
+            String name=pre+i;
+            dfa.Dstates.put(name,temp);
+            i++;
+            for(char c:alphabet){
+                Set newS = new HashSet<Integer>();
+                for(int num:temp){
+                    if(posToNode.get(num).getIcon()==c){
+                        if(!newS.empty){
+                            newS.retainAll(followpos(posToNode.get(num)));
+                        }
+                        else{
+                            newS.addAll(followpos(posToNode.get(num)));
+                        }
+                    }
+                }
+                if(!dfa.Dstates.containsValue(newS)){
+                    dfa.Dstates.replace("notMarked",newS);
+                }
+                else{
+                    dfa.Dstates.remove("notMarked");
+                }
+
+                if(dfa.Dtran.contaisKey(name)){
+                    dfa.Dstates.get(name).put(c+"",newS);
+                }
+                else{
+                    Map add = new HashMap<String,Set<Integer>>();
+                    add.put(c+"",newS);
+                    dfa.Dstates.put(name,add);
+                }
+            }
 
         }
+
         return null;
     }
 
@@ -89,7 +146,7 @@ public class LexCompiler{
         n.setFirst(result);
     }
 
-    private Set lastpos(Node n){
+    private void lastpos(Node n){
         Set<Integer> result=new HashSet();
         if(n.isLeaf()){
             if(n.getIcon()==null){
@@ -124,6 +181,7 @@ public class LexCompiler{
             for(int i:host){
                 posToNode.get(i).setFollow(posToNode.get(i).getFollow.retainAll(toAdd));
             }
+            return;
         }
         if(n.getType()==NodeType.STAR){
             Set toAdd=firstpos(n);
