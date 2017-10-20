@@ -1,7 +1,7 @@
 package main;
 
-import dataStructure.Node.java;
-import dataStructure.DFA.java;
+import dataStructure.Node;
+import dataStructure.DFA;
 import NodeType.java;
 import java.util.ArrayList;
 import java.util.Set;
@@ -9,6 +9,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.HaehMap;
 import java.util.Stack;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.BufferedReader;
 
 public class LexCompiler{
 
@@ -18,6 +23,45 @@ public class LexCompiler{
     private DFA dfa;
     private Node root;
     private Set alphabet;
+    private Set atom;
+    private int part;
+    private boolean copy;
+    private boolean RE;
+    private boolean trans;
+
+    public LexCompiler(){
+        atom=new HashSet<char>();
+        char add[]={'\\','^','$','*','+','?','{','}','.','(',')',':','[',']','|'};
+        for(char c:add){
+            atom.add(c);
+        }
+        part=1;
+        copy=false;
+        RE=false;
+        trans=false;
+    }
+
+    public void readGrammar(File file){
+        ArrayList<Character> content=new ArrayList<Character>();
+        try{
+            FileInputStream fr=new FileInputStream(file);
+            BufferedReader reader=new BufferedReader(new InputStreamReader(fr,"UTF-8"));
+            while(char c=reader.read()){
+                content.add(c);
+            }
+            reader.close();
+        }catch (Exception e){
+            System.out.println("not find file");
+        }
+
+        try{
+            File out=new File("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java");
+
+        }catch(NullPointerException e){
+            System.out.println("the pathname argument is null");
+        }
+
+    }
 
     public DFA makeDFA(String input){
         input=input+"#";

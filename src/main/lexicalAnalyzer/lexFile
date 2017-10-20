@@ -1,0 +1,15 @@
+%{
+/*definition: letter,digit,delim,ws,*/
+%}
+
+/*RD*/
+delim [ \t\n]
+ws {delim}+
+letter [a-zA-Z]
+digit [0-9]
+id {letter}({letter}|{digit})*
+number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?
+
+%%
+{ws} {}
+{id} {installID(id);return "<"+id+
