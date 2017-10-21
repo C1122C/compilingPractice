@@ -3,28 +3,25 @@ package main;
 /*本程序支持的正则表达符号包括：*、+、？、（）、|、{}。*/
 import dataStructure.Node;
 import dataStructure.DFA;
-import NodeType.java;
+import NodeType;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.HaehMap;
+import java.util.HashMap;
 import java.util.Stack;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.io.FileInputStream;
 import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 
 public class LexCompiler{
 
     private Map posToNode;
-    private String prefix;
-    private DFA dfa;
-    private Node root;
-    private Set alphabet;
     private Set atom;
     private Map re;
     private Map REcode;
@@ -32,6 +29,7 @@ public class LexCompiler{
     private Map OPcode;
     private int codeType;
     private Map REToTree;
+    private Map REToDFA;
     private ArrayList<Character> part3;
 
     public LexCompiler(){
@@ -40,15 +38,51 @@ public class LexCompiler{
         for(char c:add){
             atom.add(c);
         }
+        posToNode=new HashMap<Integer,Node>();
         re=new HashMap<String,String>();
         REcode=new HashMap<String,String>();
         KWcode=new HashMap<String,String>();
         OPcode=new HashMap<String,String>();
+        REToTree=new HashMap<String,Node>();
+        REToDFA=new HashMap<String,DFA>();
         codeType=2;
         part3=new ArrayList<Character>();
     }
 
-    public void readGrammar(File file){
+    public String getLex(File file){
+        readGrammer(file);
+        for(String s:KWcode.keySet()){
+            re.put(s," "+s+" ");
+        }
+        for(String s:OPcode.keySet()){
+            re.put(s,s);
+        }
+        for(Entry<String,String> entry in re.entrySet){
+            DFA dfa=makeDFA(entry.key(),entry.value());
+            REToDFA.put(entry.key(),dfa);
+        }
+        String s=writeFile();
+        return s;
+    }
+
+    private String writeFile(){
+        try{
+            FileWriter writer = new FileWriter("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java", true);
+            writer.write("import java.io.File;\n");
+            writer.write("import java.io.InputStreamReader;\n");
+            writer.write("import java.io.FileInputStream;\n");
+            writer.write("import java.io.BufferedReader;\n");
+            writer.write("public class myLex{\n");
+            writer.write("public void getToken(File file){\n");
+            writer.write("try{\n");
+            writer.write("FileInputStream fr=new FileInputStream(file);\n");
+            writer.write("BufferedReader reader=new BufferedReader(new InputStreamReader(fr,\"UTF-8\"));\n");
+            writer.write("while(char c=reader.read()){\n");
+            writer.write("\n");
+        }
+    }
+
+    private void readGrammar(File file){
         ArrayList<Character> content=new ArrayList<Character>();
         boolean copy=false;
         boolean RE=false;
@@ -246,7 +280,7 @@ public class LexCompiler{
                 }
 
             }
-
+            writer.close();
         }catch(NullPointerException e){
             System.out.println("the pathname argument is null");
         }
@@ -258,12 +292,12 @@ public class LexCompiler{
 
     }
 
-    public DFA makeDFA(String reName,String input){
+    private DFA makeDFA(String reName,String input){
         Node node=makeTree(input);
         REToTree.put(reName,node);
         dfa=new DFA();
         dfa.Dstates=new HashMap<String,Set<Integer>>();
-        dfa.Dtran=new HashMap<String,Map<String,Set<Integer>>>();
+        dfa.Dtran=new HashMap<String,Map<Character,Set<Integer>>>();
 
         Stack<Node> nstack = new Stack<Node>();
         Node current = root;
@@ -278,6 +312,7 @@ public class LexCompiler{
                 firstpos(current);
                 lastpos(current);
                 followpos(current);
+                posToNode.put(current.getPosition(),current);
                 current = current.getRight();
             }
             else{
@@ -313,18 +348,18 @@ public class LexCompiler{
                 }
 
                 if(dfa.Dtran.contaisKey(name)){
-                    dfa.Dstates.get(name).put(c+"",newS);
+                    dfa.Dstates.get(name).put(c,newS);
                 }
                 else{
-                    Map add = new HashMap<String,Set<Integer>>();
-                    add.put(c+"",newS);
+                    Map add = new HashMap<Character,Set<Integer>>();
+                    add.put(c,newS);
                     dfa.Dstates.put(name,add);
                 }
             }
 
         }
 
-        return null;
+        return dfa;
     }
 
     private Node makeTree(String in){
@@ -444,6 +479,7 @@ public class LexCompiler{
                 input=input+ca[i];
             }
         }
+        input=input+"#";
         String result="";
         Stack stack=new Stack();
         stack.push('#');
@@ -496,6 +532,7 @@ public class LexCompiler{
                 }
             }
         }
+        return result;
     }
 
     private boolean isOperand(char c){

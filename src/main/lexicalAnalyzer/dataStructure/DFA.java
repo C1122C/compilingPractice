@@ -7,5 +7,5 @@ import java.util.HashSet;
 
 public class  DFA{
     public Map<String,Set<Integer>> Dstates;
-    public Map<String,Map<String,Set<Integer>>> Dtran;
+    public Map<String,Map<Character,Set<Integer>>> Dtran;
 }
