@@ -1,5 +1,6 @@
 package main;
 
+/*本程序支持的正则表达符号包括：*、+、？、（）、|、{}。*/
 import dataStructure.Node;
 import dataStructure.DFA;
 import NodeType.java;
@@ -12,37 +13,54 @@ import java.util.Stack;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.io.FileOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 
 public class LexCompiler{
 
     private Map posToNode;
-    private String RE;
     private String prefix;
     private DFA dfa;
     private Node root;
     private Set alphabet;
     private Set atom;
-    private int part;
-    private boolean copy;
-    private boolean RE;
-    private boolean trans;
+    private Map re;
+    private Map REcode;
+    private Map KWcode;
+    private Map OPcode;
+    private int codeType;
+    private Map REToTree;
+    private ArrayList<Character> part3;
 
     public LexCompiler(){
         atom=new HashSet<char>();
-        char add[]={'\\','^','$','*','+','?','{','}','.','(',')',':','[',']','|'};
+        char add[]={'*','.','|','+','?'};
         for(char c:add){
             atom.add(c);
         }
-        part=1;
-        copy=false;
-        RE=false;
-        trans=false;
+        re=new HashMap<String,String>();
+        REcode=new HashMap<String,String>();
+        KWcode=new HashMap<String,String>();
+        OPcode=new HashMap<String,String>();
+        codeType=2;
+        part3=new ArrayList<Character>();
     }
 
     public void readGrammar(File file){
         ArrayList<Character> content=new ArrayList<Character>();
+        boolean copy=false;
+        boolean RE=false;
+        boolean trans=false;
+        boolean inName=false;
+        int part=1;
+        int currentP=0;
+        int spyP=0;
+        String push="";
+        String reName="";
+        String reCode="";
+        String reDes="";
         try{
             FileInputStream fr=new FileInputStream(file);
             BufferedReader reader=new BufferedReader(new InputStreamReader(fr,"UTF-8"));
@@ -56,19 +74,193 @@ public class LexCompiler{
 
         try{
             File out=new File("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java");
+            FileOutputStream fw=new FileOutputStream(out);
+            BufferedWriter writer=new BufferedWriter(new OutputStreamWriter(fw,"UTF-8"));
+            while(currentP<content.length()){
+                if(part==3){
+                    break;
+                }
+                char c=content.get(currentP);
+                if(copy){
+                    if(currentP==content.length()-1){
+                        writer.write(push);
+                        writer.flush();
+                        push="";
+                        continue;
+                    }
+                    if(c=='%'&&part==1){
+                        spyP=currentP+1;
+                        if(content.get(spyP)=='}'){
+                            currentP=currentP+2;
+                            copy=false;
+                            writer.write(push);
+                            writer.flush();
+                            push="";
+                        }
+                    }
+                    else{
+                        push=push+c;
+                        currentP=currentP+1;
+                    }
+                }
+                else if(RE){
+                    if(c=='%'){
+                        spyP=currentP+1;
+                        if(content.get(spyP)=='%'){
+                            part=2;
+                            RE=false;
+                            currentP=currentP+2;
+                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                                currentP++;
+                            }
+                            inName=true;
+                            reName="";
+                            continue;
+                        }
+                    }
+
+                    if(inName){
+                        if(c==' '){
+                            while(content.get(currentP)==' '){
+                                currentP++;
+                            }
+                            inName=false;
+                        }
+                        else{
+                            reName=reName+c;
+                            currentP++;
+                        }
+                    }
+                    else{
+                        if(c=='\n'){
+                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                                currentP++;
+                            }
+                            inName=true;
+                            if(reName.length()!=0){
+                                re.put(reName,reDes);
+                                reName="";
+                                reDes="";
+                            }
+                        }
+                        else{
+                            reDes=reDes+c;
+                            currentP++;
+                        }
+                    }
+                }
+                else if(part==2){
+                    if(c=='%'){
+                        spyP=currentP+1;
+                        if(content.get(spyP)=='%'){
+                            part=3;
+                            currentP=currentP+2;
+                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                                currentP++;
+                            }
+                            continue;
+                        }
+                    }
+                    if(inName){
+                        if(c=='{'){
+                            codeType=1;
+                            currentP++;
+                        }
+                        else if(c=='"'){
+                            codeType=3;
+                            currentP++;
+                        }
+                        else if(c==' '||c=='}'||c=='"'){
+                            while(content.get(currentP)==' '){
+                                currentP++;
+                            }
+                            inName=false;
+                        }
+                        else{
+                            reName=reName+c;
+                            currentP++;
+                        }
+                    }
+                    else{
+                        if(trans){
+                            if(c=='}'){
+                                if(reName.length()!=0){
+                                    switch(codeType){
+                                        case 1:RECode.put(reName,reCode);break;
+                                        case 2:KWcode.put(reName,reCode);break;
+                                        case 3:OPcode.put(reName,reCode);break;
+                                    }
+                                }
+                                reName="";
+                                reCode="";
+                                trans=false;
+                                while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                                    currentP++;
+                                }
+                            }
+                            else{
+                                reCode=reCode+c;
+                                currentP++;
+                            }
+                        }
+                        else{
+                            if(c=='{'){
+                                trans=true;
+                                currentP++;
+                            }
+                        }
+                    }
+                }
+                else if(c=='%'){
+                    spyP=currentP+1;
+                    if(content.get(spyP)=='{'&&part==1){
+                        copy=true;
+                        currentP=currentP+2;
+                    }
+                    else if(content.get(spyP)=='%'&&part==1){
+                        part=2;
+                        current=current+2;
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                        }
+                    }
+                    else if(content.get(spyP)=='%'&&part==2){
+                        part=3;
+                        copy=true;
+                        current=current+2;
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                        }
+                    }
+                }
+                else if (c == '/') {
+                    if(content.get(currentP+1)=='*'&&content.get(currentP+2)=='R'&&
+                            content.get(currentP+3)=='E'&&content.get(currentP+4)=='*'&&
+                            content.get(currentP+5)=='/'){
+                        RE=true;
+                        currentP=currentP+6;
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                        }
+                    }
+                }
+
+            }
 
         }catch(NullPointerException e){
             System.out.println("the pathname argument is null");
         }
+        if(part==3){
+            for(;currentP<content.length();currentP++){
+                part3.add(content.get(currentP));
+            }
+        }
 
     }
 
-    public DFA makeDFA(String input){
-        input=input+"#";
-        this.RE=input;
-        prefixTransform();
-        makeTree();
-
+    public DFA makeDFA(String reName,String input){
+        Node node=makeTree(input);
+        REToTree.put(reName,node);
         dfa=new DFA();
         dfa.Dstates=new HashMap<String,Set<Integer>>();
         dfa.Dtran=new HashMap<String,Map<String,Set<Integer>>>();
@@ -135,12 +327,197 @@ public class LexCompiler{
         return null;
     }
 
-    private Node makeTree(){
-        return null;
+    private Node makeTree(String in){
+        Node root;
+        Stack stack=new Stack();
+        String input=preTransform(in);
+        boolean inName=false;
+        String name="";
+        for(char c:input.toCharArray()){
+            if(c=='#'){
+                root=stack.pop();
+                break;
+            }
+            Node node=new Node();
+            node.setIcon(c);
+            if(!atom.contains(c)){
+                if(inName){
+                   if(c=='}'){
+                       node=REToTree.get(name);
+                       stack.push(node);
+                       inName=false;
+                       name="";
+                   }
+                   else{
+                       name=name+c;
+                   }
+                }
+                else if(c=='{'){
+                    inName=true;
+                }
+                else{
+                    node.setType(NodeType.OPREAND);
+                    stack.push(node);
+                }
+            }
+            else{
+                if(c=='*'){
+                    node.setType(NodeType.STAR);
+                    Node left=stack.pop();
+                    node.setLeft(left);
+                    stack.push(node);
+                }
+                else if(c=='+'){
+                    node.setType(NodeType.STAR);
+                    Node left=stack.pop();
+                    node.setLeft(left);
+                    Node newNode=new Node();
+                    newNode.setType(NodeType.CAT);
+                    newNode.setLeft(node);
+                    newNode.setRight(left);
+                    stack.push(newNode);
+                }
+                else if(c=='?'){
+                    node.setType(NodeType.OR);
+                    Node left=stack.pop();
+                    node.setLeft(left);
+                    stack.push(node);
+                }
+                else{
+                    if(c=='|'){
+                        node.setType(NodeType.OR);
+                    }
+                    else{
+                        node.setType(NodeType.CAT);
+                    }
+                    Node right=stack.pop();
+                    Node left=stack.pop();
+                    node.setLeft(left);
+                    node.setRight(right);
+                    stack.push(node);
+                }
+            }
+        }
+
+        Node current=root;
+        Stack<Node> nstack = new Stack<Node>();
+        int id=1;
+        for(;;){
+            while(current != null){
+                nstack.push(current);
+                current = current.getLeft();
+            }
+            if(!nstack.empty()){
+                current = nstack.pop();
+               if(current.getRight==null&&current.getLeft==null){
+                   current.setPosition(id);
+                   id++;
+               }
+                current = current.getRight();
+            }
+            else{
+                break;
+            }
+        }
+        return root;
     }
 
-    private String prefixTransform(){
-        return null;
+    private String preTransform(String in){
+        String input="";
+        char ca[]=in.toCharArray();
+        for(int i=0;i<ca.length-1;i++){
+            if(isOperand(ca[i])){
+                if(ca[i]=='{'){
+                    while(ca[i]!='}'){
+                        input=input+ca[i];
+                        i++;
+                    }
+                }
+                if(isOperand(ca[i+1])){
+                    input=input+ca[i]+".";
+                }
+                else{
+                    input=input+ca[i];
+                }
+            }
+            else{
+                input=input+ca[i];
+            }
+        }
+        String result="";
+        Stack stack=new Stack();
+        stack.push('#');
+        Map priority=new HashMap<Character,Integer>();
+        priority.put('#',0);
+        priority.put('*',5);
+        priority.put('+',5);
+        priority.put('?',5);
+        priority.put('|',1);
+        priority.put('.',1);
+        char cp[]=input.toCharArray();
+        char top;
+        for(int i=0;i<cp.length;i++){
+            if(cp[i]=='#'){
+                while(!stack.empty()){
+                    top=stack.pop();
+                    result=result+top;
+                }
+                break;
+            }
+            if(cp[i]=='{'){
+                while(cp[i]!='}'){
+                    result=result+cp[i];
+                    i++;
+                }
+                result=result+cp[i];
+            }
+            else{
+                if(isOperator(cp[i])){
+                    top=stack.pop();
+                    while(priority.get(cp[i])<=priority.get(top)){
+                        result=result+top;
+                        top=stack.pop();
+                    }
+                    stack.push(top);
+                    stack.push(cp[i]);
+                }
+                else if(cp[i]=='('){
+                    stack.push(cp[i]);
+                }
+                else if(cp[i]==')'){
+                    top=stack.pop();
+                    while(top!='('){
+                        result=result+top;
+                        top=stack.pop();
+                    }
+                }
+                else{
+                    result=result+cp[i];
+                }
+            }
+        }
+    }
+
+    private boolean isOperand(char c){
+        switch (c){
+            case '*':
+            case '+':
+            case '?':
+            case '|':
+            case ')':return false;
+            default:return true;
+        }
+    }
+
+    private boolean isOperator(char c){
+        switch (c){
+            case '*':
+            case '+':
+            case '?':
+            case '|':
+            case '.':return true;
+            default:return false;
+        }
     }
 
     private void nullable(Node n){

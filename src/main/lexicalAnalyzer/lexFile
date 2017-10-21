@@ -2,7 +2,7 @@
 /*definition: letter,digit,delim,ws,*/
 %}
 
-/*RD*/
+/*RE*/
 delim [ \t\n]
 ws {delim}+
 letter [a-zA-Z]
