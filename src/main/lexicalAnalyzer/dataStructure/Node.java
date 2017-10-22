@@ -15,6 +15,7 @@ public class Node{
     private Set<Integer> follow;
     private Node right;
     private Node left;
+    public int end;
 
     public void setRight(main.Node right) {
         this.right = right;

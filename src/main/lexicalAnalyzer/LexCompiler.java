@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Stack;
+import java.util.Queue;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.io.FileInputStream;
@@ -31,6 +32,14 @@ public class LexCompiler{
     private Map REToTree;
     private Map REToDFA;
     private ArrayList<Character> part3;
+    private Set alphabet;
+    private State startPoint;
+    private Map map1;
+    private Map map2;
+    private Map map3;
+    private Queue queue;
+    private int finalID;
+    private Map stateToRE;
 
     public LexCompiler(){
         atom=new HashSet<char>();
@@ -38,7 +47,6 @@ public class LexCompiler{
         for(char c:add){
             atom.add(c);
         }
-        posToNode=new HashMap<Integer,Node>();
         re=new HashMap<String,String>();
         REcode=new HashMap<String,String>();
         KWcode=new HashMap<String,String>();
@@ -47,6 +55,12 @@ public class LexCompiler{
         REToDFA=new HashMap<String,DFA>();
         codeType=2;
         part3=new ArrayList<Character>();
+        map1=new HashMap<String,Map<Character,String>>();
+        map2=new HashMap<String,String>();
+        map3=new HashMap<String,String>();
+        queue=new Queue();
+        finalID=0;
+        stateToRE=new HashMap<String,Set<String>>();
     }
 
     public String getLex(File file){
@@ -57,15 +71,126 @@ public class LexCompiler{
         for(String s:OPcode.keySet()){
             re.put(s,s);
         }
-        for(Entry<String,String> entry in re.entrySet){
-            DFA dfa=makeDFA(entry.key(),entry.value());
+        int i=0;
+        for(Entry<String,String> entry : re.entrySet){
+            DFA dfa=makeDFA(entry.key(),entry.value(),i);
+            i++;
             REToDFA.put(entry.key(),dfa);
         }
+        DFAmerge();
         String s=writeFile();
         return s;
     }
 
+    private void DFAmerge(){
+        for(Entry entry:REToDFA){
+            String rere=entry.key();
+            Map toadd=entry.value().UsableDtran;
+            map1.putAll(toadd);
+            for(String originalS:toadd.keySet()){
+                if(originalS.contains("T")){
+                    map3.put(originalS,rere);
+                }
+            }
+        }
+        int count=0;
+        for(String s:map1.keySet()){
+            if(s.equals("0-N")||s.equals("0-T")){
+                count++;
+                map2.put(s,"I"+finalID);
+            }
+        }
+        if(count>1){
+            queue.add("I"+finalID);
+            finalID++;
+            while(!queue.isEmpty()){
+                stateMerge();
+            }
+        }
+        for(Entry entry:map3){
+            String originalS=entry.key();
+            String r=entry.value();
+            if(map2.keySet().contains(originalS)){
+                String newSt=map2.get(originalS);
+                if(!stateToRE.keySet().contains(newSt)){
+                    Set ss=new Set<String>();
+                    for(Entry en:map2){
+                        if(en.value.equals(newSt)){
+                            ss.add(map3.get(en.key()));
+                        }
+                    }
+                }
+                stateToRE.put(newSt,ss);
+            }
+        }
+    }
+
+    private void stateMerge(){
+        Map newMap=new HashMap<Character,String>();
+        String newState=queue.remove();
+        ArrayList<String> originalS=new ArrayList<String>();
+        ArrayList<Character> path=new ArrayList<Character>();
+        ArrayList<String> destination=new ArrayList<String>();
+        for(Entry entry:map2){
+            if(entry.value().equals(newState)){
+                originalS.add(entry.key());
+            }
+        }
+        for(String s:originalS){
+            Map temp=map1.get(s);
+            for(Entry entry:temp){
+                path.add(entry.key());
+                destination.add(entry.value());
+            }
+            map1.remove(s);
+        }
+        for(int i=0;i<path.size();i++){
+            int count=0;
+            ArrayList<String> newOriginal=new ArrayList<String>();
+            newOriginal.add(destination.get(i));
+            char check=path.get(i);
+            for(int j=i+1;j<path.size();j++){
+                if(path.get(j)==check){
+                    count++;
+                    newOriginal.add(destination.get(j));
+                    path.remove(j);
+                    destination.remove(j);
+                }
+            }
+            if(count>0){
+                String name="I"+finalID;
+                finalID++;
+                queue.add(name);
+                for(String s:originalS){
+                    map2.put(s,name);
+                }
+                newMap.put(check,name);
+            }
+            else{
+                newMap.put(check,destination.get(i));
+            }
+        }
+        map1.put(newState,newMap);
+        for(Entry entry:map1){
+            Map temp=entry.value();
+            for(Entry en:temp){
+                if(originalS.contains(en.value())){
+                    temp.replace(en.key(),en.value(),newState);
+                    map1.replace(entry.key(),entry.value(),temp);
+                }
+            }
+        }
+    }
+
     private String writeFile(){
+        Map atFirst=REToDFA;
+        char c=chars.get(lexBegin);
+        for(DFA dfa:atFirst.values()){
+            Map trans=dfa.UsableDtran;
+            for(Entre outen:trans){
+
+            }
+        }
         try{
             FileWriter writer = new FileWriter("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java", true);
             writer.write("import java.io.File;\n");
@@ -292,7 +417,7 @@ public class LexCompiler{
 
     }
 
-    private DFA makeDFA(String reName,String input){
+    private DFA makeDFA(String reName,String input,int pf){
         Node node=makeTree(input);
         REToTree.put(reName,node);
         dfa=new DFA();
@@ -301,6 +426,8 @@ public class LexCompiler{
 
         Stack<Node> nstack = new Stack<Node>();
         Node current = root;
+        int end=root.end;
+        posToNode=new HashMap<Integer,Node>();
         for(;;){
             while(current != null){
                 nstack.push(current);
@@ -321,11 +448,19 @@ public class LexCompiler{
         }
 
         dfa.Dstates.put("notMarked",root.getFirst());
-        String pre = "I";
         int i = 0;
         while(dfa.Dstates.containsKey("notMarked")){
             Set temp=dfa.Dstates.get("notMarked");
-            String name=pre+i;
+            String name="";
+            if(i!=0){
+                name=pf+"-";
+            }
+            if(temp.contains(end)){
+                name=name+i+"-T";
+            }
+            else{
+                name=name+i+"-N";
+            }
             dfa.Dstates.put(name,temp);
             i++;
             for(char c:alphabet){
@@ -363,6 +498,7 @@ public class LexCompiler{
     }
 
     private Node makeTree(String in){
+        alphabet=new HashSet<Character>();
         Node root;
         Stack stack=new Stack();
         String input=preTransform(in);
@@ -375,6 +511,7 @@ public class LexCompiler{
             }
             Node node=new Node();
             node.setIcon(c);
+            alphabet.add(c);
             if(!atom.contains(c)){
                 if(inName){
                    if(c=='}'){
@@ -454,6 +591,7 @@ public class LexCompiler{
                 break;
             }
         }
+        root.end=id-1;
         return root;
     }
 
@@ -489,7 +627,7 @@ public class LexCompiler{
         priority.put('+',5);
         priority.put('?',5);
         priority.put('|',1);
-        priority.put('.',1);
+        priority.put('.',2);
         char cp[]=input.toCharArray();
         char top;
         for(int i=0;i<cp.length;i++){
