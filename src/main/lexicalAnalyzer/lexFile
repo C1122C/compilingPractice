@@ -13,3 +13,16 @@ number {digit}+(\.{digit}+)?(E[+-]?{digit}+)?
 %%
 {ws} {}
 {id} {installID(id);return "<"+id+
+
+%%
+public String InstallID(String name){
+        IDetail idetail=new IDetail(begin,length);
+        IDTable.put(name,idetail);
+        return name;
+    }
+
+    public String InstallNum(String name,int v){
+        NumDetail numdetail=new NumDetail(begin,length,v);
+        NumTable.put(name,numdetail);
+        return name;
+    }

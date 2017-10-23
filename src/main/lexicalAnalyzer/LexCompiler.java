@@ -17,6 +17,7 @@ import java.io.FileInputStream;
 import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.FileReader;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 
@@ -32,6 +33,7 @@ public class LexCompiler{
     private Map REToTree;
     private Map REToDFA;
     private ArrayList<Character> part3;
+    private ArrayList<Character> codeCopy;
     private Set alphabet;
     private State startPoint;
     private Map map1;
@@ -61,9 +63,10 @@ public class LexCompiler{
         queue=new Queue();
         finalID=0;
         stateToRE=new HashMap<String,Set<String>>();
+        codeCopy=new ArrayList<Character>();
     }
 
-    public String getLex(File file){
+    public void getLex(File file){
         readGrammer(file);
         for(String s:KWcode.keySet()){
             re.put(s," "+s+" ");
@@ -182,28 +185,62 @@ public class LexCompiler{
         }
     }
 
-    private String writeFile(){
-        Map atFirst=REToDFA;
-        char c=chars.get(lexBegin);
-        for(DFA dfa:atFirst.values()){
-            Map trans=dfa.UsableDtran;
-            for(Entre outen:trans){
-
-            }
-        }
+    private void writeFile(){
         try{
-            FileWriter writer = new FileWriter("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java", true);
-            writer.write("import java.io.File;\n");
-            writer.write("import java.io.InputStreamReader;\n");
-            writer.write("import java.io.FileInputStream;\n");
-            writer.write("import java.io.BufferedReader;\n");
-            writer.write("public class myLex{\n");
-            writer.write("public void getToken(File file){\n");
-            writer.write("try{\n");
-            writer.write("FileInputStream fr=new FileInputStream(file);\n");
-            writer.write("BufferedReader reader=new BufferedReader(new InputStreamReader(fr,\"UTF-8\"));\n");
-            writer.write("while(char c=reader.read()){\n");
-            writer.write("\n");
+            FileReader fr=new FileReader("E:\\IdeaProjects\\compilingPractice\\src\\output\\codeScript1.txt");
+            BufferedReader reader=new BufferedReader(fr);
+            File out=new File("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java");
+            FileOutputStream fw=new FileOutputStream(out);
+            BufferedWriter writer=new BufferedWriter(new OutputStreamWriter(fw,"UTF-8"));
+            for(char c:codeCopy){
+                writer.write(c);
+            }
+            String s="";
+            while(s=reader.readLine()){
+                writer.write(s);
+            }
+            for(Entry entry:map1){
+                String name=entry.key();
+                Map router=entry.value();
+                writer.write("\n");
+                writer.write("public String "+name+"(){\n");
+                writer.write("char path=chars.get(forword);\n");
+                writer.write("forword++;\n");
+                writer.write("switch(path){\n");
+                for(Entry en:router){
+                    writer.write("case '"+en.key()+"':return "+en.value()+"();\n");
+                }
+                writer.write("default:forword=forword-2;\n");
+                writer.write("}\n");
+                writer.write("begin=lexBegin;\n");
+                writer.write("length=forword-lexBegin+1;\n");
+                writer.write("lexBegin=forword+1\n");
+                writer.write("forword=lexBegin;\n");
+                if(stateToRE.containsKey(name)){
+                    String reName=stateToRE.get(name);
+                    if(KWcode.containsKey(reName)){
+                        writer.write(KWcode.get(reName));
+                    }
+                    else if(REcode.containsKey(reName)){
+                        writer.write(REcode.get(reName));
+                    }
+                    else{
+                        writer.write(OPcode.get(reName));
+                    }
+                }
+                writer.write("}\n");
+            }
+            for(char part:part3){
+                writer.write(part);
+            }
+            writer.write("}");
+            fr=new FileReader("E:\\IdeaProjects\\compilingPractice\\src\\output\\codeScript2.txt");
+            reader=new BufferedReader(fr);
+            s="";
+            while(s=reader.readLine()){
+                writer.write(s);
+            }
+            writer.close();
         }
     }
 
@@ -216,7 +253,6 @@ public class LexCompiler{
         int part=1;
         int currentP=0;
         int spyP=0;
-        String push="";
         String reName="";
         String reCode="";
         String reDes="";
@@ -231,184 +267,168 @@ public class LexCompiler{
             System.out.println("not find file");
         }
 
-        try{
-            File out=new File("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java");
-            FileOutputStream fw=new FileOutputStream(out);
-            BufferedWriter writer=new BufferedWriter(new OutputStreamWriter(fw,"UTF-8"));
-            while(currentP<content.length()){
-                if(part==3){
-                    break;
+        while(currentP<content.length()){
+            if(part==3){
+                break;
+            }
+            char c=content.get(currentP);
+            if(copy){
+                if(c=='%'&&part==1){
+                    spyP=currentP+1;
+                    if(content.get(spyP)=='}'){
+                        currentP=currentP+2;
+                        copy=false;
+                    }
                 }
-                char c=content.get(currentP);
-                if(copy){
-                    if(currentP==content.length()-1){
-                        writer.write(push);
-                        writer.flush();
-                        push="";
+                else{
+                    codeCopy.add(c);
+                    currentP=currentP+1;
+                }
+            }
+            else if(RE){
+                if(c=='%'){
+                    spyP=currentP+1;
+                    if(content.get(spyP)=='%'){
+                        part=2;
+                        RE=false;
+                        currentP=currentP+2;
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                        }
+                        inName=true;
+                        reName="";
                         continue;
                     }
-                    if(c=='%'&&part==1){
-                        spyP=currentP+1;
-                        if(content.get(spyP)=='}'){
-                            currentP=currentP+2;
-                            copy=false;
-                            writer.write(push);
-                            writer.flush();
-                            push="";
+                }
+
+                if(inName){
+                    if(c==' '){
+                        while(content.get(currentP)==' '){
+                            currentP++;
                         }
+                        inName=false;
                     }
                     else{
-                        push=push+c;
-                        currentP=currentP+1;
+                        reName=reName+c;
+                        currentP++;
                     }
                 }
-                else if(RE){
-                    if(c=='%'){
-                        spyP=currentP+1;
-                        if(content.get(spyP)=='%'){
-                            part=2;
-                            RE=false;
-                            currentP=currentP+2;
-                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                                currentP++;
-                            }
-                            inName=true;
+                else{
+                    if(c=='\n'){
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                        }
+                        inName=true;
+                        if(reName.length()!=0){
+                            re.put(reName,reDes);
                             reName="";
-                            continue;
-                        }
-                    }
-
-                    if(inName){
-                        if(c==' '){
-                            while(content.get(currentP)==' '){
-                                currentP++;
-                            }
-                            inName=false;
-                        }
-                        else{
-                            reName=reName+c;
-                            currentP++;
+                            reDes="";
                         }
                     }
                     else{
-                        if(c=='\n'){
-                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                                currentP++;
-                            }
-                            inName=true;
-                            if(reName.length()!=0){
-                                re.put(reName,reDes);
-                                reName="";
-                                reDes="";
-                            }
-                        }
-                        else{
-                            reDes=reDes+c;
-                            currentP++;
-                        }
+                        reDes=reDes+c;
+                        currentP++;
                     }
                 }
-                else if(part==2){
-                    if(c=='%'){
-                        spyP=currentP+1;
-                        if(content.get(spyP)=='%'){
-                            part=3;
-                            currentP=currentP+2;
-                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                                currentP++;
-                            }
-                            continue;
-                        }
-                    }
-                    if(inName){
-                        if(c=='{'){
-                            codeType=1;
-                            currentP++;
-                        }
-                        else if(c=='"'){
-                            codeType=3;
-                            currentP++;
-                        }
-                        else if(c==' '||c=='}'||c=='"'){
-                            while(content.get(currentP)==' '){
-                                currentP++;
-                            }
-                            inName=false;
-                        }
-                        else{
-                            reName=reName+c;
-                            currentP++;
-                        }
-                    }
-                    else{
-                        if(trans){
-                            if(c=='}'){
-                                if(reName.length()!=0){
-                                    switch(codeType){
-                                        case 1:RECode.put(reName,reCode);break;
-                                        case 2:KWcode.put(reName,reCode);break;
-                                        case 3:OPcode.put(reName,reCode);break;
-                                    }
-                                }
-                                reName="";
-                                reCode="";
-                                trans=false;
-                                while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                                    currentP++;
-                                }
-                            }
-                            else{
-                                reCode=reCode+c;
-                                currentP++;
-                            }
-                        }
-                        else{
-                            if(c=='{'){
-                                trans=true;
-                                currentP++;
-                            }
-                        }
-                    }
-                }
-                else if(c=='%'){
-                    spyP=currentP+1;
-                    if(content.get(spyP)=='{'&&part==1){
-                        copy=true;
-                        currentP=currentP+2;
-                    }
-                    else if(content.get(spyP)=='%'&&part==1){
-                        part=2;
-                        current=current+2;
-                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                            currentP++;
-                        }
-                    }
-                    else if(content.get(spyP)=='%'&&part==2){
-                        part=3;
-                        copy=true;
-                        current=current+2;
-                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                            currentP++;
-                        }
-                    }
-                }
-                else if (c == '/') {
-                    if(content.get(currentP+1)=='*'&&content.get(currentP+2)=='R'&&
-                            content.get(currentP+3)=='E'&&content.get(currentP+4)=='*'&&
-                            content.get(currentP+5)=='/'){
-                        RE=true;
-                        currentP=currentP+6;
-                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
-                            currentP++;
-                        }
-                    }
-                }
-
             }
-            writer.close();
-        }catch(NullPointerException e){
-            System.out.println("the pathname argument is null");
+            else if(part==2){
+                if(c=='%'){
+                    spyP=currentP+1;
+                    if(content.get(spyP)=='%'){
+                        part=3;
+                        currentP=currentP+2;
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                        }
+                        continue;
+                    }
+                }
+                if(inName){
+                    if(c=='{'){
+                        codeType=1;
+                        currentP++;
+                    }
+                    else if(c=='"'){
+                        codeType=3;
+                        currentP++;
+                    }
+                    else if(c==' '||c=='}'||c=='"'){
+                        while(content.get(currentP)==' '){
+                            currentP++;
+                        }
+                        inName=false;
+                    }
+                    else{
+                        reName=reName+c;
+                        currentP++;
+                    }
+                }
+                else{
+                    if(trans){
+                        if(c=='}'){
+                            if(reName.length()!=0){
+                                switch(codeType){
+                                    case 1:RECode.put(reName,reCode);break;
+                                    case 2:KWcode.put(reName,reCode);break;
+                                    case 3:OPcode.put(reName,reCode);break;
+                                }
+                            }
+                            reName="";
+                            reCode="";
+                            trans=false;
+                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                                currentP++;
+                            }
+                        }
+                        else{
+                            reCode=reCode+c;
+                            currentP++;
+                        }
+                    }
+                    else{
+                        if(c=='{'){
+                            trans=true;
+                            currentP++;
+                        }
+                    }
+                }
+            }
+            else if(c=='%'){
+                spyP=currentP+1;
+                if(content.get(spyP)=='{'&&part==1){
+                    copy=true;
+                    currentP=currentP+2;
+                }
+                else if(content.get(spyP)=='%'&&part==1){
+                    part=2;
+                    current=current+2;
+                    while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                        currentP++;
+                    }
+                }
+                else if(content.get(spyP)=='%'&&part==2){
+                    part=3;
+                    copy=true;
+                    current=current+2;
+                    while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                        currentP++;
+                    }
+                }
+            }
+            else if (c == '/') {
+                if(content.get(currentP+1)=='*'&&content.get(currentP+2)=='R'&&
+                        content.get(currentP+3)=='E'&&content.get(currentP+4)=='*'&&
+                        content.get(currentP+5)=='/'){
+                    RE=true;
+                    currentP=currentP+6;
+                    while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                        currentP++;
+                    }
+                }
+            }
+
         }
+
         if(part==3){
             for(;currentP<content.length();currentP++){
                 part3.add(content.get(currentP));

@@ -1,0 +1,21 @@
+class  IDetail{
+    public int position;
+    public int length;
+
+    public IDetail(int p,int l){
+        this.position=p;
+        this.length=l;
+    }
+}
+
+class  NumDetail{
+    public int position;
+    public int length;
+    public int value;
+
+    public IDetail(int p,int l,int v){
+        this.position=p;
+        this.length=l;
+        this.value=v;
+    }
+}
