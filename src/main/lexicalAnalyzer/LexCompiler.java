@@ -1,9 +1,13 @@
-package main;
+package main.lexicalAnalyzer;
 
 /*本程序支持的正则表达符号包括：*、+、？、（）、|、{}。*/
-import dataStructure.Node;
-import dataStructure.DFA;
-import NodeType;
+import main.dataStructure.Node;
+import main.dataStructure.DFA;
+import main.lexicalAnalyzer.NodeType;
+import main.dataStructure.DFA;
+import main.dataStructure.Node;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -11,40 +15,31 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Stack;
 import java.util.Queue;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.io.FileInputStream;
-import java.io.OutputStreamWriter;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.FileReader;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.util.LinkedList;
 
 public class LexCompiler{
 
-    private Map posToNode;
-    private Set atom;
-    private Map re;
-    private Map REcode;
-    private Map KWcode;
-    private Map OPcode;
+    private Map<Integer,Node> posToNode;
+    private Set<Character> atom;
+    private Map<String,String> re;
+    private Map<String,String> REcode;
+    private Map<String,String> KWcode;
+    private Map<String,String> OPcode;
     private int codeType;
-    private Map REToTree;
-    private Map REToDFA;
+    private Map<String,Node> REToTree;
+    private Map<String,DFA> REToDFA;
     private ArrayList<Character> part3;
     private ArrayList<Character> codeCopy;
-    private Set alphabet;
-    private State startPoint;
-    private Map map1;
-    private Map map2;
-    private Map map3;
-    private Queue queue;
+    private Set<Character> alphabet;
+    private Map<String,Map<Character,String>> map1;
+    private Map<String,String> map2;
+    private Map<String,String> map3;
+    private LinkedList<String> queue;
     private int finalID;
-    private Map stateToRE;
+    private Map<String,Set<String>> stateToRE;
 
     public LexCompiler(){
-        atom=new HashSet<char>();
+        atom=new HashSet<Character>();
         char add[]={'*','.','|','+','?'};
         for(char c:add){
             atom.add(c);
@@ -60,14 +55,14 @@ public class LexCompiler{
         map1=new HashMap<String,Map<Character,String>>();
         map2=new HashMap<String,String>();
         map3=new HashMap<String,String>();
-        queue=new Queue();
+        queue=new LinkedList<String>();
         finalID=0;
         stateToRE=new HashMap<String,Set<String>>();
         codeCopy=new ArrayList<Character>();
     }
 
-    public void getLex(File file){
-        readGrammer(file);
+    public void getLex(String file){
+        readGrammar(file);
         for(String s:KWcode.keySet()){
             re.put(s," "+s+" ");
         }
@@ -75,20 +70,19 @@ public class LexCompiler{
             re.put(s,s);
         }
         int i=0;
-        for(Entry<String,String> entry : re.entrySet){
-            DFA dfa=makeDFA(entry.key(),entry.value(),i);
+        for(Map.Entry<String,String> entry : re.entrySet()){
+            DFA dfa=makeDFA(entry.getKey(),entry.getKey(),i);
             i++;
-            REToDFA.put(entry.key(),dfa);
+            REToDFA.put(entry.getKey(),dfa);
         }
         DFAmerge();
-        String s=writeFile();
-        return s;
+        writeFile();
     }
 
     private void DFAmerge(){
-        for(Entry entry:REToDFA){
-            String rere=entry.key();
-            Map toadd=entry.value().UsableDtran;
+        for(Map.Entry<String,DFA> entry:REToDFA.entrySet()){
+            String rere=entry.getKey();
+            Map<String,Map<Character,String>> toadd=entry.getValue().UsableDtran;
             map1.putAll(toadd);
             for(String originalS:toadd.keySet()){
                 if(originalS.contains("T")){
@@ -110,16 +104,16 @@ public class LexCompiler{
                 stateMerge();
             }
         }
-        for(Entry entry:map3){
-            String originalS=entry.key();
-            String r=entry.value();
+        for(Map.Entry<String,String> entry:map3.entrySet()){
+            String originalS=entry.getKey();
+            String r=entry.getValue();
             if(map2.keySet().contains(originalS)){
                 String newSt=map2.get(originalS);
+                Set<String> ss=new HashSet<String>();
                 if(!stateToRE.keySet().contains(newSt)){
-                    Set ss=new Set<String>();
-                    for(Entry en:map2){
-                        if(en.value.equals(newSt)){
-                            ss.add(map3.get(en.key()));
+                    for(Map.Entry<String,String> en:map2.entrySet()){
+                        if(en.getValue().equals(newSt)){
+                            ss.add(map3.get(en.getKey()));
                         }
                     }
                 }
@@ -134,16 +128,16 @@ public class LexCompiler{
         ArrayList<String> originalS=new ArrayList<String>();
         ArrayList<Character> path=new ArrayList<Character>();
         ArrayList<String> destination=new ArrayList<String>();
-        for(Entry entry:map2){
-            if(entry.value().equals(newState)){
-                originalS.add(entry.key());
+        for(Map.Entry<String,String> entry:map2.entrySet()){
+            if(entry.getValue().equals(newState)){
+                originalS.add(entry.getKey());
             }
         }
         for(String s:originalS){
-            Map temp=map1.get(s);
-            for(Entry entry:temp){
-                path.add(entry.key());
-                destination.add(entry.value());
+            Map<Character,String> temp=map1.get(s);
+            for(Map.Entry<Character,String> entry:temp.entrySet()){
+                path.add(entry.getKey());
+                destination.add(entry.getValue());
             }
             map1.remove(s);
         }
@@ -174,12 +168,12 @@ public class LexCompiler{
             }
         }
         map1.put(newState,newMap);
-        for(Entry entry:map1){
-            Map temp=entry.value();
-            for(Entry en:temp){
-                if(originalS.contains(en.value())){
-                    temp.replace(en.key(),en.value(),newState);
-                    map1.replace(entry.key(),entry.value(),temp);
+        for(Map.Entry<String,Map<Character,String>> entry:map1.entrySet()){
+            Map<Character,String> temp=entry.getValue();
+            for(Map.Entry<Character,String> en:temp.entrySet()){
+                if(originalS.contains(en.getValue())){
+                    temp.replace(en.getKey(),en.getValue(),newState);
+                    map1.replace(entry.getKey(),entry.getValue(),temp);
                 }
             }
         }
@@ -195,20 +189,21 @@ public class LexCompiler{
             for(char c:codeCopy){
                 writer.write(c);
             }
-            String s="";
-            while(s=reader.readLine()){
+            String s=reader.readLine();
+            while(s!=null){
                 writer.write(s);
+                s=reader.readLine();
             }
-            for(Entry entry:map1){
-                String name=entry.key();
-                Map router=entry.value();
+            for(Map.Entry<String,Map<Character,String>> entry:map1.entrySet()){
+                String name=entry.getKey();
+                Map<Character,String> router=entry.getValue();
                 writer.write("\n");
                 writer.write("public String "+name+"(){\n");
                 writer.write("char path=chars.get(forword);\n");
                 writer.write("forword++;\n");
                 writer.write("switch(path){\n");
-                for(Entry en:router){
-                    writer.write("case '"+en.key()+"':return "+en.value()+"();\n");
+                for(Map.Entry<Character,String> en:router.entrySet()){
+                    writer.write("case '"+en.getKey()+"':return "+en.getValue()+"();\n");
                 }
                 writer.write("default:forword=forword-2;\n");
                 writer.write("}\n");
@@ -217,15 +212,17 @@ public class LexCompiler{
                 writer.write("lexBegin=forword+1\n");
                 writer.write("forword=lexBegin;\n");
                 if(stateToRE.containsKey(name)){
-                    String reName=stateToRE.get(name);
-                    if(KWcode.containsKey(reName)){
-                        writer.write(KWcode.get(reName));
-                    }
-                    else if(REcode.containsKey(reName)){
-                        writer.write(REcode.get(reName));
-                    }
-                    else{
-                        writer.write(OPcode.get(reName));
+                    Set<String> reName=stateToRE.get(name);
+                    for(String rn:reName){
+                        if(KWcode.containsKey(rn)){
+                            writer.write(KWcode.get(rn));
+                        }
+                        else if(REcode.containsKey(rn)){
+                            writer.write(REcode.get(rn));
+                        }
+                        else{
+                            writer.write(OPcode.get(rn));
+                        }
                     }
                 }
                 writer.write("}\n");
@@ -236,15 +233,21 @@ public class LexCompiler{
             writer.write("}");
             fr=new FileReader("E:\\IdeaProjects\\compilingPractice\\src\\output\\codeScript2.txt");
             reader=new BufferedReader(fr);
-            s="";
-            while(s=reader.readLine()){
+            s=reader.readLine();
+            while(s!=null){
                 writer.write(s);
             }
             writer.close();
+        }catch(FileNotFoundException e){
+            e.printStackTrace();
+        }catch(UnsupportedEncodingException e){
+            e.printStackTrace();
+        }catch(IOException e){
+            e.printStackTrace();
         }
     }
 
-    private void readGrammar(File file){
+    private void readGrammar(String file){
         ArrayList<Character> content=new ArrayList<Character>();
         boolean copy=false;
         boolean RE=false;
@@ -259,15 +262,18 @@ public class LexCompiler{
         try{
             FileInputStream fr=new FileInputStream(file);
             BufferedReader reader=new BufferedReader(new InputStreamReader(fr,"UTF-8"));
-            while(char c=reader.read()){
+            int in=reader.read();
+            while(in!=-1){
+                char c=(char)(in);
                 content.add(c);
+                in=reader.read();
             }
             reader.close();
         }catch (Exception e){
             System.out.println("not find file");
         }
 
-        while(currentP<content.length()){
+        while(currentP<content.size()){
             if(part==3){
                 break;
             }
@@ -368,7 +374,7 @@ public class LexCompiler{
                         if(c=='}'){
                             if(reName.length()!=0){
                                 switch(codeType){
-                                    case 1:RECode.put(reName,reCode);break;
+                                    case 1:REcode.put(reName,reCode);break;
                                     case 2:KWcode.put(reName,reCode);break;
                                     case 3:OPcode.put(reName,reCode);break;
                                 }
@@ -401,7 +407,7 @@ public class LexCompiler{
                 }
                 else if(content.get(spyP)=='%'&&part==1){
                     part=2;
-                    current=current+2;
+                    currentP=currentP+2;
                     while(content.get(currentP)==' '||content.get(currentP)=='\n'){
                         currentP++;
                     }
@@ -409,7 +415,7 @@ public class LexCompiler{
                 else if(content.get(spyP)=='%'&&part==2){
                     part=3;
                     copy=true;
-                    current=current+2;
+                    currentP=currentP+2;
                     while(content.get(currentP)==' '||content.get(currentP)=='\n'){
                         currentP++;
                     }
@@ -430,7 +436,7 @@ public class LexCompiler{
         }
 
         if(part==3){
-            for(;currentP<content.length();currentP++){
+            for(;currentP<content.size();currentP++){
                 part3.add(content.get(currentP));
             }
         }
@@ -440,13 +446,13 @@ public class LexCompiler{
     private DFA makeDFA(String reName,String input,int pf){
         Node node=makeTree(input);
         REToTree.put(reName,node);
-        dfa=new DFA();
+        DFA dfa=new DFA();
         dfa.Dstates=new HashMap<String,Set<Integer>>();
         dfa.Dtran=new HashMap<String,Map<Character,Set<Integer>>>();
 
         Stack<Node> nstack = new Stack<Node>();
-        Node current = root;
-        int end=root.end;
+        Node current = node;
+        int end=node.end;
         posToNode=new HashMap<Integer,Node>();
         for(;;){
             while(current != null){
@@ -459,7 +465,7 @@ public class LexCompiler{
                 firstpos(current);
                 lastpos(current);
                 followpos(current);
-                posToNode.put(current.getPosition(),current);
+                posToNode.put(current.getPostion(),current);
                 current = current.getRight();
             }
             else{
@@ -467,10 +473,10 @@ public class LexCompiler{
             }
         }
 
-        dfa.Dstates.put("notMarked",root.getFirst());
+        dfa.Dstates.put("notMarked",node.getFirst());
         int i = 0;
         while(dfa.Dstates.containsKey("notMarked")){
-            Set temp=dfa.Dstates.get("notMarked");
+            Set<Integer> temp=dfa.Dstates.get("notMarked");
             String name="";
             if(i!=0){
                 name=pf+"-";
@@ -484,14 +490,14 @@ public class LexCompiler{
             dfa.Dstates.put(name,temp);
             i++;
             for(char c:alphabet){
-                Set newS = new HashSet<Integer>();
+                Set<Integer> newS = new HashSet<Integer>();
                 for(int num:temp){
                     if(posToNode.get(num).getIcon()==c){
-                        if(!newS.empty){
-                            newS.retainAll(followpos(posToNode.get(num)));
+                        if(!newS.isEmpty()){
+                            newS.retainAll((posToNode.get(num)).getFollow());
                         }
                         else{
-                            newS.addAll(followpos(posToNode.get(num)));
+                            newS.addAll((posToNode.get(num)).getFollow());
                         }
                     }
                 }
@@ -502,13 +508,15 @@ public class LexCompiler{
                     dfa.Dstates.remove("notMarked");
                 }
 
-                if(dfa.Dtran.contaisKey(name)){
-                    dfa.Dstates.get(name).put(c,newS);
+                if(dfa.Dtran.containsKey(name)){
+                    Map<Character,Set<Integer>> t=dfa.Dtran.get(name);
+                    t.put(c,newS);
+                    dfa.Dtran.replace(name,t);
                 }
                 else{
-                    Map add = new HashMap<Character,Set<Integer>>();
+                    Map<Character,Set<Integer>> add = new HashMap<Character,Set<Integer>>();
                     add.put(c,newS);
-                    dfa.Dstates.put(name,add);
+                    dfa.Dtran.put(name,add);
                 }
             }
 
@@ -519,8 +527,8 @@ public class LexCompiler{
 
     private Node makeTree(String in){
         alphabet=new HashSet<Character>();
-        Node root;
-        Stack stack=new Stack();
+        Node root=new Node();
+        Stack<Node> stack=new Stack<Node>();
         String input=preTransform(in);
         boolean inName=false;
         String name="";
@@ -548,7 +556,7 @@ public class LexCompiler{
                     inName=true;
                 }
                 else{
-                    node.setType(NodeType.OPREAND);
+                    node.setType(NodeType.OPERAND);
                     stack.push(node);
                 }
             }
@@ -601,8 +609,8 @@ public class LexCompiler{
             }
             if(!nstack.empty()){
                 current = nstack.pop();
-               if(current.getRight==null&&current.getLeft==null){
-                   current.setPosition(id);
+               if(current.getRight()==null&&current.getLeft()==null){
+                   current.setPostion(id);
                    id++;
                }
                 current = current.getRight();
@@ -639,9 +647,9 @@ public class LexCompiler{
         }
         input=input+"#";
         String result="";
-        Stack stack=new Stack();
+        Stack<Character> stack=new Stack<Character>();
         stack.push('#');
-        Map priority=new HashMap<Character,Integer>();
+        Map<Character,Integer> priority=new HashMap<Character,Integer>();
         priority.put('#',0);
         priority.put('*',5);
         priority.put('+',5);
@@ -716,17 +724,19 @@ public class LexCompiler{
     }
 
     private void nullable(Node n){
+        nullable(n.getLeft());
+        nullable(n.getRight());
         if(n.isLeaf()){
-            if(n.getIcon()==null){
+            if(n.isNull){
                 n.setNullable(true);
             }
             n.setNullable(false);
         }
         if(n.getType()==NodeType.OR){
-            n.setNullable(nullable(n.getLeft())||nullable(n.getRight()));
+            n.setNullable(n.getLeft().isNullable()||n.getRight().isNullable());
         }
         if(n.getType()==NodeType.CAT){
-            n.setNullable(nullable(n.getLeft()&&nullable(n.getRight())));
+            n.setNullable(n.getLeft().isNullable()&&n.getRight().isNullable());
         }
         if(n.getType()==NodeType.STAR){
             n.setNullable(true);
@@ -735,75 +745,91 @@ public class LexCompiler{
     }
 
     private void firstpos(Node n){
+        firstpos(n.getLeft());
+        firstpos(n.getRight());
         Set<Integer> result=new HashSet();
         if(n.isLeaf()){
-            if(n.getIcon()==null){
+            if(n.isNull){
                 n.setFirst(null);
                 return;
             }
-            result.add(n.getPos());
+            result.add(n.getPostion());
         }
         if(n.getType()==NodeType.OR){
-            result=firstpos(n.getLeft());
-            result.retainAll(n.getRight());
+            result=n.getLeft().getFirst();
+            result.retainAll(n.getRight().getFirst());
         }
         if(n.getType()==NodeType.CAT){
-            if nullable(n.getLeft()){
-                result=firstpos(n.getLeft());
-                result.retainAll(n.getRight());
+            if(n.getLeft().isNullable()){
+                result=n.getLeft().getFirst();
+                result.retainAll(n.getRight().getFirst());
             }
             else{
-                result=firstpos(n.getLeft());
+                result=n.getLeft().getFirst();
             }
         }
         if(n.getType()==NodeType.STAR){
-            result=firstpos(n.getLeft());
+            result=n.getLeft().getFirst();
         }
         n.setFirst(result);
     }
 
     private void lastpos(Node n){
         Set<Integer> result=new HashSet();
+        lastpos(n.getLeft());
+        lastpos(n.getRight());
         if(n.isLeaf()){
-            if(n.getIcon()==null){
+            if(n.isNull){
                 n.setLast(null);
                 return;
             }
-            result.add(n.getPos());
+            result.add(n.getPostion());
         }
         if(n.getType()==NodeType.OR){
-            result=lastpos(n.left());
-            result.retainAll(n.right());
+            result=n.getLeft().getLast();
+            result.retainAll(n.getRight().getLast());
         }
         if(n.getType()==NodeType.CAT){
-            if nullable(n.right()){
-                result=lastpos(n.left());
-                result.retainAll(n.right());
+            if(n.getRight().isNullable()){
+                result=n.getLeft().getLast();
+                result.retainAll(n.getRight().getLast());
             }
             else{
-                result=lastpos(n.right());
+                result=n.getRight().getLast();
             }
         }
         if(n.getType()==NodeType.STAR){
-            result=lastpos(n.left());
+            result=n.getLeft().getLast();
         }
         n.setLast(result);
     }
 
     private void followpos(Node n){
+        firstpos(n.getLeft());
+        firstpos(n.getRight());
+        lastpos(n.getLeft());
+        lastpos(n.getRight());
         if(n.getType()==NodeType.CAT){
-            Set toAdd = firstpos(n.getRight());
-            Set host = lastpos(n.getLeft());
+            Set<Integer> toAdd = n.getRight().getFirst();
+            Set<Integer> host = n.getLeft().getLast();
             for(int i:host){
-                posToNode.get(i).setFollow(posToNode.get(i).getFollow.retainAll(toAdd));
+                Node no=posToNode.get(i);
+                Set<Integer> sss=no.getFollow();
+                sss.retainAll(toAdd);
+                no.setFollow(sss);
+                posToNode.replace(i,no);
             }
             return;
         }
         if(n.getType()==NodeType.STAR){
-            Set toAdd=firstpos(n);
-            Set host=lastpos(n);
+            Set<Integer> toAdd=n.getFirst();
+            Set<Integer> host=n.getLast();
             for(int i:host){
-                posToNode.get(i).setFollow(posToNode.get(i).getFollow.retainAll(toAdd));
+                Node no=posToNode.get(i);
+                Set<Integer> sss=no.getFollow();
+                sss.retainAll(toAdd);
+                no.setFollow(sss);
+                posToNode.replace(i,no);
             }
         }
     }

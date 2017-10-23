@@ -1,9 +1,16 @@
+package main.lexicalAnalyzer;
+
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.io.FileInputStream;
-import java.io.Map;
-import java.io.HashMap;
+import java.util.Map;
+import java.util.HashMap;
+import main.dataStructure.IDetail;
+import main.dataStructure.NumDetail;
+import java.io.FileNotFoundException;
 
 public class CodeScript{
 
@@ -37,26 +44,31 @@ public class CodeScript{
 
     public void readFile(String name){
         try{
+            FileReader reader=new FileReader(name);
             FileInputStream stream=new FileInputStream(name);
-            while(char c=stream.read()){
+            int in=stream.read();
+            while(in!=-1){
+                char c=(char)(in);
                 chars.add(c);
             }
         }catch (FileNotFoundException e){
             System.out.println("Sorry,we can not find a file with the given path.");
+        }catch(IOException e1){
+
         }
     }
 
     public void getNextToken(){
         currentState="I0";
         while(!canNotGo){
-            Map router=map1.get(currentState);
-            char path=chars.get(forword);
+            Map router=(HashMap<Character,String>)map1.get(currentState);
+            char path=(Character)chars.get(forword);
             if(stateToRE.containsKey(currentState)){
                 canOut=true;
-                re.add(stateToRE.get(currentState));
+                re.add((String)stateToRE.get(currentState));
             }
             if(router.containsKey(path)){
-                currentState=router.get(path);
+                currentState=(String)router.get(path);
                 forword++;
             }
             else{
@@ -73,9 +85,7 @@ public class CodeScript{
     }
 
     public void mapCode(String re){
-        if(KWcode.containsKey(re)){
 
-        }
     }
 
     public boolean end(){
@@ -94,7 +104,7 @@ public class CodeScript{
     }
 
     public String InstallNum(String name,int v){
-        NumDetail numdetail=new NumDetail(lexBegin,forword,v;
+        NumDetail numdetail=new NumDetail(lexBegin,forword,v);
         NumTable.put(name,numdetail);
         return name;
     }

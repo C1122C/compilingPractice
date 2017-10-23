@@ -1,8 +1,8 @@
-package main;
+package main.dataStructure;
 
-import NodeType.java;
+import main.lexicalAnalyzer.NodeType;
+
 import java.util.Set;
-import java.util.HashSet;
 
 public class Node{
 
@@ -16,20 +16,21 @@ public class Node{
     private Node right;
     private Node left;
     public int end;
+    public boolean isNull=true;
 
-    public void setRight(main.Node right) {
+    public void setRight(Node right) {
         this.right = right;
     }
 
-    public void setLeft(main.Node left) {
+    public void setLeft(Node left) {
         this.left = left;
     }
 
-    public main.Node getRight() {
+    public Node getRight() {
         return right;
     }
 
-    public main.Node getLeft() {
+    public Node getLeft() {
         return left;
     }
 

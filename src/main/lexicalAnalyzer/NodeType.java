@@ -1,4 +1,4 @@
-package main;
+package main.lexicalAnalyzer;
 public enum NodeType{
     OPERAND,
     CAT,

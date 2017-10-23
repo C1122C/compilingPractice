@@ -1,4 +1,5 @@
-package main;
+package main.dataStructure;
+
 
 
 public class  IDetail{
