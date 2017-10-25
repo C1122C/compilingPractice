@@ -1,5 +1,8 @@
 package main.dataStructure;
 
+/**
+ * 确定的有限自动机实体类
+ */
 
 import java.util.Map;
 import java.util.HashMap;
@@ -7,8 +10,11 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class  DFA{
+    /*状态集*/
     public Map<String,Set<Integer>> Dstates;
+    /*状态转换：对应位置集*/
     public Map<String,Map<Character,Set<Integer>>> Dtran;
+    /*状态转换：对应状态*/
     public Map<String,Map<Character,String>> UsableDtran;
 
     public DFA(){
@@ -17,6 +23,9 @@ public class  DFA{
         UsableDtran=new HashMap<String,Map<Character,String>>();
     }
 
+    /**
+     * 自动构建状态转换集
+     */
     public void trans(){
         String name="";
         for(Map.Entry<String,Map<Character,Set<Integer>>> entry:Dtran.entrySet()){

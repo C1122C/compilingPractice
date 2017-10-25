@@ -1,6 +1,8 @@
 package main.lexicalAnalyzer;
-
-/*本程序支持的正则表达符号包括：*、+、？、（）、|、{}。*/
+/**
+ * lex功能实现类，读取文法生成词法分析器程序
+ * 本程序支持的正则表达符号包括：*、+、？、（）、|、{}。
+ */
 import main.dataStructure.Node;
 import main.dataStructure.DFA;
 import main.lexicalAnalyzer.NodeType;
@@ -14,28 +16,44 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Stack;
-import java.util.Queue;
 import java.util.LinkedList;
 
 public class LexCompiler{
 
+    /*由节点位置映射到节点*/
     private Map<Integer,Node> posToNode;
+    /*本程序支持的正则表达式符号集*/
     private Set<Character> atom;
+    /*正则表达式名称-文法*/
     private Map<String,String> re;
+    /*正则表达式-代码*/
     private Map<String,String> REcode;
+    /*关键字-代码*/
     private Map<String,String> KWcode;
+    /*操作符-代码*/
     private Map<String,String> OPcode;
+    /*代码类型*/
     private int codeType;
+    /*由正则表达式名称到对应树的映射*/
     private Map<String,Node> REToTree;
+    /*由正则表达式名称到DFA的映射*/
     private Map<String,DFA> REToDFA;
+    /*由文件编写者自己定义的代码*/
     private ArrayList<Character> part3;
+    /*文件中需要直接拷贝的部分*/
     private ArrayList<Character> codeCopy;
+    /*字母表*/
     private Set<Character> alphabet;
+    /*正则表达式-状态转换*/
     private Map<String,Map<Character,String>> map1;
+    /*原状态-新状态*/
     private Map<String,String> map2;
+    /*原状态-正则名称*/
     private Map<String,String> map3;
+    /*状态合并工具*/
     private LinkedList<String> queue;
     private int finalID;
+    /*状态-正则映射*/
     private Map<String,Set<String>> stateToRE;
 
     public LexCompiler(){
@@ -61,7 +79,12 @@ public class LexCompiler{
         codeCopy=new ArrayList<Character>();
     }
 
+    /**
+     * 词法分析程序生成
+     * @param file 文法文件名
+     */
     public void getLex(String file){
+        //读取文法规则
         readGrammar(file);
         for(String s:KWcode.keySet()){
             re.put(s," "+s+" ");
@@ -69,16 +92,21 @@ public class LexCompiler{
         for(String s:OPcode.keySet()){
             re.put(s,s);
         }
+        //遍历文法，逐个生成DFA
         int i=0;
         for(Map.Entry<String,String> entry : re.entrySet()){
-            DFA dfa=makeDFA(entry.getKey(),entry.getKey(),i);
+            DFA dfa=makeDFA(entry.getKey(),entry.getValue(),i);
             i++;
             REToDFA.put(entry.getKey(),dfa);
         }
+        //状态合并
         DFAmerge();
         writeFile();
     }
 
+    /**
+     * DFA合成
+     */
     private void DFAmerge(){
         for(Map.Entry<String,DFA> entry:REToDFA.entrySet()){
             String rere=entry.getKey();
@@ -122,6 +150,9 @@ public class LexCompiler{
         }
     }
 
+    /**
+     * 状态合成
+     */
     private void stateMerge(){
         Map newMap=new HashMap<Character,String>();
         String newState=queue.remove();
@@ -158,7 +189,7 @@ public class LexCompiler{
                 String name="I"+finalID;
                 finalID++;
                 queue.add(name);
-                for(String s:originalS){
+                for(String s:newOriginal){
                     map2.put(s,name);
                 }
                 newMap.put(check,name);
@@ -179,6 +210,9 @@ public class LexCompiler{
         }
     }
 
+    /**
+     * 写文件
+     */
     private void writeFile(){
         try{
             FileReader fr=new FileReader("E:\\IdeaProjects\\compilingPractice\\src\\output\\codeScript1.txt");
@@ -186,22 +220,27 @@ public class LexCompiler{
             File out=new File("E:\\IdeaProjects\\compilingPractice\\src\\output\\out.java");
             FileOutputStream fw=new FileOutputStream(out);
             BufferedWriter writer=new BufferedWriter(new OutputStreamWriter(fw,"UTF-8"));
+            //写入直接拷贝部分
             for(char c:codeCopy){
                 writer.write(c);
             }
+            //写入类定义和读文件方法
             String s=reader.readLine();
             while(s!=null){
                 writer.write(s);
                 s=reader.readLine();
             }
+            //每个状态对应一个函数
             for(Map.Entry<String,Map<Character,String>> entry:map1.entrySet()){
                 String name=entry.getKey();
                 Map<Character,String> router=entry.getValue();
                 writer.write("\n");
                 writer.write("public String "+name+"(){\n");
                 writer.write("char path=chars.get(forword);\n");
+                writer.write("out=out+path;\n");
                 writer.write("forword++;\n");
                 writer.write("switch(path){\n");
+                //可能跳转到的下一状态
                 for(Map.Entry<Character,String> en:router.entrySet()){
                     writer.write("case '"+en.getKey()+"':return "+en.getValue()+"();\n");
                 }
@@ -211,6 +250,7 @@ public class LexCompiler{
                 writer.write("length=forword-lexBegin+1;\n");
                 writer.write("lexBegin=forword+1\n");
                 writer.write("forword=lexBegin;\n");
+                //如果符合出口条件，写入文件对应代码
                 if(stateToRE.containsKey(name)){
                     Set<String> reName=stateToRE.get(name);
                     for(String rn:reName){
@@ -227,10 +267,13 @@ public class LexCompiler{
                 }
                 writer.write("}\n");
             }
+            //写入自定义函数
             for(char part:part3){
                 writer.write(part);
             }
+            //结束类
             writer.write("}");
+            //写入工具类
             fr=new FileReader("E:\\IdeaProjects\\compilingPractice\\src\\output\\codeScript2.txt");
             reader=new BufferedReader(fr);
             s=reader.readLine();
@@ -247,18 +290,33 @@ public class LexCompiler{
         }
     }
 
+    /**
+     * 文法文件解析
+     * @param file 文件名称
+     */
     private void readGrammar(String file){
         ArrayList<Character> content=new ArrayList<Character>();
+        //是否正在读取复制部分
         boolean copy=false;
+        //是否正在读取正则表达式部分
         boolean RE=false;
+        //是否正在读取正则表达式转换部分
         boolean trans=false;
+        //是否正在读取定义或转换部分的名称
         boolean inName=false;
+        //标记当前读取文件的位置
         int part=1;
+        //读头位置
         int currentP=0;
+        //探针位置
         int spyP=0;
+        //正则表达式名称
         String reName="";
+        //正则表达式代码
         String reCode="";
+        //正则表达式描述
         String reDes="";
+        //将文件内容一次性读入content中
         try{
             FileInputStream fr=new FileInputStream(file);
             BufferedReader reader=new BufferedReader(new InputStreamReader(fr,"UTF-8"));
@@ -273,12 +331,15 @@ public class LexCompiler{
             System.out.println("not find file");
         }
 
+        //扫描文件内容
         while(currentP<content.size()){
             if(part==3){
                 break;
             }
             char c=content.get(currentP);
+            //正在读取直接拷贝的代码
             if(copy){
+                //判断是否读到了结束标记
                 if(c=='%'&&part==1){
                     spyP=currentP+1;
                     if(content.get(spyP)=='}'){
@@ -291,7 +352,9 @@ public class LexCompiler{
                     currentP=currentP+1;
                 }
             }
+            //正在读取正则定义部分的代码
             else if(RE){
+                //判断第一部分是否结束
                 if(c=='%'){
                     spyP=currentP+1;
                     if(content.get(spyP)=='%'){
@@ -307,7 +370,9 @@ public class LexCompiler{
                     }
                 }
 
+                //正在读取正则定义的名称
                 if(inName){
+                    //判断是否读取完毕
                     if(c==' '){
                         while(content.get(currentP)==' '){
                             currentP++;
@@ -320,6 +385,7 @@ public class LexCompiler{
                     }
                 }
                 else{
+                    //判断正则定义部分是否读完
                     if(c=='\n'){
                         while(content.get(currentP)==' '||content.get(currentP)=='\n'){
                             currentP++;
@@ -337,7 +403,9 @@ public class LexCompiler{
                     }
                 }
             }
+            //正在读取转化部分
             else if(part==2){
+                //判断转化部分是否结束
                 if(c=='%'){
                     spyP=currentP+1;
                     if(content.get(spyP)=='%'){
@@ -349,15 +417,19 @@ public class LexCompiler{
                         continue;
                     }
                 }
+                //正在读取正则名称
                 if(inName){
+                    //遇到一个正则
                     if(c=='{'){
                         codeType=1;
                         currentP++;
                     }
+                    //遇到一个操作符
                     else if(c=='"'){
                         codeType=3;
                         currentP++;
                     }
+                    //名称读取结束
                     else if(c==' '||c=='}'||c=='"'){
                         while(content.get(currentP)==' '){
                             currentP++;
@@ -381,10 +453,12 @@ public class LexCompiler{
                             }
                             reName="";
                             reCode="";
+                            codeType=2;
                             trans=false;
                             while(content.get(currentP)==' '||content.get(currentP)=='\n'){
                                 currentP++;
                             }
+                            inName=true;
                         }
                         else{
                             reCode=reCode+c;
@@ -399,6 +473,7 @@ public class LexCompiler{
                     }
                 }
             }
+            //开始复制部分
             else if(c=='%'){
                 spyP=currentP+1;
                 if(content.get(spyP)=='{'&&part==1){
@@ -410,6 +485,7 @@ public class LexCompiler{
                     currentP=currentP+2;
                     while(content.get(currentP)==' '||content.get(currentP)=='\n'){
                         currentP++;
+                        inName=true;
                     }
                 }
                 else if(content.get(spyP)=='%'&&part==2){
@@ -421,6 +497,7 @@ public class LexCompiler{
                     }
                 }
             }
+            //进入正则定义
             else if (c == '/') {
                 if(content.get(currentP+1)=='*'&&content.get(currentP+2)=='R'&&
                         content.get(currentP+3)=='E'&&content.get(currentP+4)=='*'&&
@@ -435,6 +512,7 @@ public class LexCompiler{
 
         }
 
+        //拷贝第三部分的代码
         if(part==3){
             for(;currentP<content.size();currentP++){
                 part3.add(content.get(currentP));
@@ -443,7 +521,15 @@ public class LexCompiler{
 
     }
 
+    /**
+     * 生成DFA
+     * @param reName 正则表达式名称
+     * @param input 正则表达式描述
+     * @param pf DFA编号
+     * @return DFA实体类
+     */
     private DFA makeDFA(String reName,String input,int pf){
+        //首先生成语法树
         Node node=makeTree(input);
         REToTree.put(reName,node);
         DFA dfa=new DFA();
@@ -452,8 +538,10 @@ public class LexCompiler{
 
         Stack<Node> nstack = new Stack<Node>();
         Node current = node;
+        //得到终态的位置
         int end=node.end;
         posToNode=new HashMap<Integer,Node>();
+        //节点属性计算
         for(;;){
             while(current != null){
                 nstack.push(current);
@@ -477,6 +565,7 @@ public class LexCompiler{
         int i = 0;
         while(dfa.Dstates.containsKey("notMarked")){
             Set<Integer> temp=dfa.Dstates.get("notMarked");
+            //状态编号
             String name="";
             if(i!=0){
                 name=pf+"-";
@@ -525,10 +614,16 @@ public class LexCompiler{
         return dfa;
     }
 
+    /**
+     * 根据正则表达式生成语法树
+     * @param in 正则表达式
+     * @return 根节点
+     */
     private Node makeTree(String in){
         alphabet=new HashSet<Character>();
         Node root=new Node();
         Stack<Node> stack=new Stack<Node>();
+        //预处理
         String input=preTransform(in);
         boolean inName=false;
         String name="";
@@ -557,6 +652,7 @@ public class LexCompiler{
                 }
                 else{
                     node.setType(NodeType.OPERAND);
+                    node.setIcon(c);
                     stack.push(node);
                 }
             }
@@ -581,6 +677,9 @@ public class LexCompiler{
                     node.setType(NodeType.OR);
                     Node left=stack.pop();
                     node.setLeft(left);
+                    Node newNode=new Node();
+                    newNode.isNull=true;
+                    node.setRight(newNode);
                     stack.push(node);
                 }
                 else{
@@ -599,6 +698,7 @@ public class LexCompiler{
             }
         }
 
+        //编号
         Node current=root;
         Stack<Node> nstack = new Stack<Node>();
         int id=1;
@@ -623,9 +723,15 @@ public class LexCompiler{
         return root;
     }
 
+    /**
+     * 正则表达式预处理
+     * @param in 正则表达式
+     * @return 转换后的只含有.*\{}？的后缀正则表达
+     */
     private String preTransform(String in){
         String input="";
         char ca[]=in.toCharArray();
+        //第一步：加点
         for(int i=0;i<ca.length-1;i++){
             if(isOperand(ca[i])){
                 if(ca[i]=='{'){
@@ -645,10 +751,12 @@ public class LexCompiler{
                 input=input+ca[i];
             }
         }
+        input=input+ca[ca.length-1];
         input=input+"#";
         String result="";
         Stack<Character> stack=new Stack<Character>();
         stack.push('#');
+        //定义优先级
         Map<Character,Integer> priority=new HashMap<Character,Integer>();
         priority.put('#',0);
         priority.put('*',5);
@@ -701,6 +809,11 @@ public class LexCompiler{
         return result;
     }
 
+    /**
+     * 判断一个字符是否是操作数
+     * @param c 待判断字符
+     * @return
+     */
     private boolean isOperand(char c){
         switch (c){
             case '*':
@@ -712,6 +825,11 @@ public class LexCompiler{
         }
     }
 
+    /**
+     * 判断一个字符是否是操作符
+     * @param c 待判断字符
+     * @return
+     */
     private boolean isOperator(char c){
         switch (c){
             case '*':
@@ -723,6 +841,10 @@ public class LexCompiler{
         }
     }
 
+    /**
+     * 计算节点属性的方法
+     * @param n 输入节点
+     */
     private void nullable(Node n){
         nullable(n.getLeft());
         nullable(n.getRight());
