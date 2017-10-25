@@ -55,6 +55,9 @@ public class LexCompiler{
     private int finalID;
     /*状态-正则映射*/
     private Map<String,Set<String>> stateToRE;
+    private ArrayList<String> order;
+    int lexBegin=0;
+    int forword=0;
 
     public LexCompiler(){
         atom=new HashSet<Character>();
@@ -77,6 +80,7 @@ public class LexCompiler{
         finalID=0;
         stateToRE=new HashMap<String,Set<String>>();
         codeCopy=new ArrayList<Character>();
+        order=new ArrayList<String>();
     }
 
     /**
@@ -87,17 +91,19 @@ public class LexCompiler{
         //读取文法规则
         readGrammar(file);
         for(String s:KWcode.keySet()){
+            order.add(s);
             re.put(s," "+s+" ");
         }
         for(String s:OPcode.keySet()){
+            order.add(s);
             re.put(s,s);
         }
         //遍历文法，逐个生成DFA
         int i=0;
-        for(Map.Entry<String,String> entry : re.entrySet()){
-            DFA dfa=makeDFA(entry.getKey(),entry.getValue(),i);
+        for(String s:order){
+            DFA dfa=makeDFA(s,re.get(s),i);
             i++;
-            REToDFA.put(entry.getKey(),dfa);
+            REToDFA.put(s,dfa);
         }
         //状态合并
         DFAmerge();
@@ -294,7 +300,7 @@ public class LexCompiler{
      * 文法文件解析
      * @param file 文件名称
      */
-    private void readGrammar(String file){
+    private String readGrammar(String file){
         ArrayList<Character> content=new ArrayList<Character>();
         //是否正在读取复制部分
         boolean copy=false;
@@ -331,6 +337,7 @@ public class LexCompiler{
             System.out.println("not find file");
         }
 
+
         //扫描文件内容
         while(currentP<content.size()){
             if(part==3){
@@ -340,6 +347,9 @@ public class LexCompiler{
             //正在读取直接拷贝的代码
             if(copy){
                 //判断是否读到了结束标记
+                if((currentP==content.size()-2)&&((c!='%')||(content.get(currentP+1)!='}'))){
+                    return "Fail:Can not match a %} mark to end the grammar file.";
+                }
                 if(c=='%'&&part==1){
                     spyP=currentP+1;
                     if(content.get(spyP)=='}'){
@@ -361,7 +371,7 @@ public class LexCompiler{
                         part=2;
                         RE=false;
                         currentP=currentP+2;
-                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                             currentP++;
                         }
                         inName=true;
@@ -387,12 +397,13 @@ public class LexCompiler{
                 else{
                     //判断正则定义部分是否读完
                     if(c=='\n'){
-                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                             currentP++;
                         }
                         inName=true;
                         if(reName.length()!=0){
                             re.put(reName,reDes);
+                            order.add(reName);
                             reName="";
                             reDes="";
                         }
@@ -411,7 +422,7 @@ public class LexCompiler{
                     if(content.get(spyP)=='%'){
                         part=3;
                         currentP=currentP+2;
-                        while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                        while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                             currentP++;
                         }
                         continue;
@@ -424,13 +435,9 @@ public class LexCompiler{
                         codeType=1;
                         currentP++;
                     }
-                    //遇到一个操作符
-                    else if(c=='"'){
-                        codeType=3;
-                        currentP++;
-                    }
                     //名称读取结束
-                    else if(c==' '||c=='}'||c=='"'){
+                    else if((c==' '&&codeType==2)||(c=='}'&&codeType==1)||(c=='"'&&codeType==3)){
+                        currentP++;
                         while(content.get(currentP)==' '){
                             currentP++;
                         }
@@ -442,6 +449,10 @@ public class LexCompiler{
                     }
                 }
                 else{
+                    if(reName.startsWith("\"")){
+                        codeType=3;
+                        reName=reName.substring(1,reName.length()-1);
+                    }
                     if(trans){
                         if(c=='}'){
                             if(reName.length()!=0){
@@ -455,7 +466,8 @@ public class LexCompiler{
                             reCode="";
                             codeType=2;
                             trans=false;
-                            while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                            currentP++;
+                            while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                                 currentP++;
                             }
                             inName=true;
@@ -483,7 +495,7 @@ public class LexCompiler{
                 else if(content.get(spyP)=='%'&&part==1){
                     part=2;
                     currentP=currentP+2;
-                    while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                    while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                         currentP++;
                         inName=true;
                     }
@@ -492,7 +504,7 @@ public class LexCompiler{
                     part=3;
                     copy=true;
                     currentP=currentP+2;
-                    while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                    while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                         currentP++;
                     }
                 }
@@ -504,10 +516,14 @@ public class LexCompiler{
                         content.get(currentP+5)=='/'){
                     RE=true;
                     currentP=currentP+6;
-                    while(content.get(currentP)==' '||content.get(currentP)=='\n'){
+                    while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                         currentP++;
                     }
+                    inName=true;
                 }
+            }
+            else{
+                currentP++;
             }
 
         }
@@ -518,6 +534,31 @@ public class LexCompiler{
                 part3.add(content.get(currentP));
             }
         }
+        /*test:System.out.println("COPY_PART:");
+        for(char ch:codeCopy){
+            System.out.print(ch);
+        }
+        System.out.println("PART3_PART:");
+        for(char ch:part3){
+            System.out.print(ch);
+        }
+        System.out.println("RE_PART:");
+        for(Map.Entry<String,String> entry:re.entrySet()){
+            System.out.println("NAME: "+entry.getKey()+" DES: "+entry.getValue());
+        }
+        System.out.println("RE_PART:");
+        for(Map.Entry<String,String> entry:REcode.entrySet()){
+            System.out.println("NAME: "+entry.getKey()+" CODE: "+entry.getValue());
+        }
+        System.out.println("KW_PART:");
+        for(Map.Entry<String,String> entry:KWcode.entrySet()){
+            System.out.println("NAME: "+entry.getKey()+" CODE: "+entry.getValue());
+        }
+        System.out.println("OP_PART:");
+        for(Map.Entry<String,String> entry:OPcode.entrySet()){
+            System.out.println("NAME: "+entry.getKey()+" CODE: "+entry.getValue());
+        }*/
+        return "Success!";
 
     }
 
@@ -733,26 +774,56 @@ public class LexCompiler{
         char ca[]=in.toCharArray();
         //第一步：加点
         for(int i=0;i<ca.length-1;i++){
-            if(isOperand(ca[i])){
+            if(!isOperator(ca[i])){
+                if(ca[i]=='('){
+                    input=input+ca[i];
+                    continue;
+                }
                 if(ca[i]=='{'){
                     while(ca[i]!='}'){
                         input=input+ca[i];
                         i++;
                     }
+                    input=input+ca[i];
+                    if(!isOperator(ca[i+1])){
+                        input=input+".";
+                    }
+                    continue;
                 }
-                if(isOperand(ca[i+1])){
+                if(ca[i]==')'){
+                    input=input+ca[i];
+                    if(!isOperator((ca[i+1]))){
+                        input=input+".";
+                    }
+                    continue;
+                }
+                if(ca[i+1]=='('){
+                    input=input+".";
+                }
+                else if(ca[i+1]==')'){
+                    input=input+ca[i];
+                }
+                else if(isOperand(ca[i+1])){
                     input=input+ca[i]+".";
                 }
                 else{
                     input=input+ca[i];
                 }
             }
+            else if(ca[i]=='*'||ca[i]=='+'||ca[i]=='?'){
+                if(isOperand(ca[i+1])){
+                    input=input+ca[i];
+                    input=input+".";
+                }
+            }
             else{
                 input=input+ca[i];
             }
         }
+
         input=input+ca[ca.length-1];
         input=input+"#";
+        //System.out.println("we get "+input);
         String result="";
         Stack<Character> stack=new Stack<Character>();
         stack.push('#');
@@ -762,8 +833,9 @@ public class LexCompiler{
         priority.put('*',5);
         priority.put('+',5);
         priority.put('?',5);
-        priority.put('|',1);
-        priority.put('.',2);
+        priority.put('|',2);
+        priority.put('.',3);
+        priority.put('(',1);
         char cp[]=input.toCharArray();
         char top;
         for(int i=0;i<cp.length;i++){
@@ -783,10 +855,18 @@ public class LexCompiler{
             }
             else{
                 if(isOperator(cp[i])){
+                    if(cp[i]=='*'||cp[i]=='+'||cp[i]=='?'){
+                        result=result+cp[i];
+                        continue;
+                    }
                     top=stack.pop();
-                    while(priority.get(cp[i])<=priority.get(top)){
-                        result=result+top;
-                        top=stack.pop();
+                    try{
+                        while(priority.get(cp[i])<=priority.get(top)){
+                            result=result+top;
+                            top=stack.pop();
+                        }
+                    }catch (NullPointerException e){
+                        System.out.println("now "+cp[i]+" "+top);
                     }
                     stack.push(top);
                     stack.push(cp[i]);
@@ -819,8 +899,7 @@ public class LexCompiler{
             case '*':
             case '+':
             case '?':
-            case '|':
-            case ')':return false;
+            case '|':return false;
             default:return true;
         }
     }
@@ -954,5 +1033,47 @@ public class LexCompiler{
                 posToNode.replace(i,no);
             }
         }
+    }
+
+    public void getNextToken(String name){
+        ArrayList<String> reget=new ArrayList<String>();
+        String currentState;
+        boolean canNotGo=false;
+        currentState="I0";
+        boolean canOut=false;
+        ArrayList<Character> chars=new ArrayList<Character>();
+        try{
+            FileReader reader=new FileReader(name);
+            FileInputStream stream=new FileInputStream(name);
+            int in=stream.read();
+            while(in!=-1){
+                char c=(char)(in);
+                chars.add(c);
+            }
+        }catch (FileNotFoundException e){
+            System.out.println("Sorry,we can not find a file with the given path.");
+        }catch(IOException e1){
+
+        }
+        while(!canNotGo){
+            Map router=(HashMap<Character,String>)map1.get(currentState);
+            char path=(Character)chars.get(forword);
+            if(stateToRE.containsKey(currentState)){
+                canOut=true;
+                reget.addAll(stateToRE.get(currentState));
+            }
+            if(router.containsKey(path)){
+                currentState=(String)router.get(path);
+                forword++;
+            }
+            else{
+                canNotGo=true;
+                forword--;
+            }
+        }
+        String gainedRE=reget.get(reget.size()-1);
+        lexBegin=forword+1;
+        forword=lexBegin;
+        System.out.println(gainedRE);
     }
 }

@@ -16,6 +16,7 @@ public class CodeScript{
     private boolean canNotGo;
     private ArrayList<String> re;
     private String currentState;
+    private String out;
 
     public CodeScript(){
         IDTable=new HashMap<String,IDetail>();
@@ -31,6 +32,7 @@ public class CodeScript{
 
     public String getNextToken(){
         return I0();
+        out="";
     }
 
     public void readFile(String name){

@@ -81,7 +81,7 @@ public class CodeScript{
         length=forword-lexBegin;
         lexBegin=forword+1;
         forword=lexBegin;
-        mapCode(gainedRE);
+        System.out.println(gainedRE);
     }
 
     public void mapCode(String re){

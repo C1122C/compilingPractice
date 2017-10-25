@@ -6,18 +6,13 @@
 letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|v|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
 number 0|1|2|3|4|5|6|7|8|9
 id letter+(letter|number)*
-mark !|~|`|@|$|%|^|&|\*|\(|\)|_|-|\+|=|\{|\}|\\|\||:|;|'|"|<|>|,|.|\?|/
-char letter|number|mark
-float number+\.number+
+char letter|number
 int number+
 
 %%
 {letter} {return "Token<letter_"+out+">";}
 {number} {InstallNum(out);return "Token<number_"+out+">";}
 {id} {InstallID(out);return "Token<id_"+out+">";}
-{mark} {return "Token<mark_"+out+">";}
-{char} {return "Token<character_"+out+">";}
-{float} {InstallNum(out); return "Token<float_"+out+">";}
 {int} {InstallNum(out); return "Token<int_"+out+">";}
 else {return "<KW_ELSE>";}
 switch {return "<KW_SWITCH>";}
@@ -32,12 +27,8 @@ if {return "<KW_IF>";}
 static {return "<KW_STATIC>";}
 do {return "<KW_DO>";}
 while {return "<KW_WHILE>";}
-"+" {return "<OP_ADD>";}
 "-" {return "<OP_SUB>";}
-"*" {return "<OP_MUL>";}
 "/" {return "<OP_DEV>";}
-"%" {return "<OP_MOD>";}
-"++" {return "<OP_ADD_SELF>";}
 "--" {return "<OP_SUB_SELF>";}
 "==" {return "<OP_EQU>";}
 "=" {return "<OP_ASS>";}
@@ -47,7 +38,6 @@ while {return "<KW_WHILE>";}
 ">=" {return "<OP_E_MORE>";}
 "<=" {return "<OP_E_LESS>";}
 "&&" {return "<OP_AND>";}
-"||" {return "<OP_OR>";}
 "!" {return "<OP_NOT>";}
 
 
