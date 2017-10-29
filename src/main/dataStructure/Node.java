@@ -6,6 +6,7 @@ package main.dataStructure;
 
 import main.lexicalAnalyzer.NodeType;
 import java.util.Set;
+import java.util.HashSet;
 
 public class Node{
 
@@ -24,10 +25,24 @@ public class Node{
     private Node right;
     /*左孩子*/
     private Node left;
+    public Node parent;
     /*节点所在树终止节点的位置*/
     public int end;
     /*如果这个节点代表的是epsilon，则这一属性为true*/
-    public boolean isNull=true;
+    public boolean isNull;
+    public boolean isLeaf;
+    public boolean isEnd;
+
+    public int tag;
+
+    public Node(){
+        first=new HashSet<Integer>();
+        last=new HashSet<Integer>();
+        follow=new HashSet<Integer>();
+        isNull=false;
+        isLeaf=false;
+        isEnd=false;
+    }
 
     public void setRight(Node right) {
         this.right = right;
@@ -102,6 +117,6 @@ public class Node{
     }
 
     public boolean isLeaf(){
-        return false;
+        return isLeaf;
     }
 }

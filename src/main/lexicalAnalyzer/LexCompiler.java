@@ -25,7 +25,7 @@ public class LexCompiler{
     /*本程序支持的正则表达式符号集*/
     private Set<Character> atom;
     /*正则表达式名称-文法*/
-    private Map<String,String> re;
+    public Map<String,String> re;
     /*正则表达式-代码*/
     private Map<String,String> REcode;
     /*关键字-代码*/
@@ -113,7 +113,7 @@ public class LexCompiler{
     /**
      * DFA合成
      */
-    private void DFAmerge(){
+    public void DFAmerge(){
         for(Map.Entry<String,DFA> entry:REToDFA.entrySet()){
             String rere=entry.getKey();
             Map<String,Map<Character,String>> toadd=entry.getValue().UsableDtran;
@@ -245,6 +245,13 @@ public class LexCompiler{
                 writer.write("char path=chars.get(forword);\n");
                 writer.write("out=out+path;\n");
                 writer.write("forword++;\n");
+                if(stateToRE.containsKey(name)){
+                    Set<String> reName=stateToRE.get(name);
+                    for(String rn:reName){
+                        writer.write("re.add("+rn+");");
+                        writer.write("index.add(forward);");
+                    }
+                }
                 writer.write("switch(path){\n");
                 //可能跳转到的下一状态
                 for(Map.Entry<Character,String> en:router.entrySet()){
@@ -257,11 +264,21 @@ public class LexCompiler{
                 writer.write("lexBegin=forword+1\n");
                 writer.write("forword=lexBegin;\n");
                 //如果符合出口条件，写入文件对应代码
+                writer.write("if(!isEmpty(re){\n");
+                writer.write("forward=index.get(index.size()-1);\n");
+                writer.write("index.remove(index.size()-1);\n");
+                writer.write("String rename=re.get(re.size()-1);\n");
+                writer.write("re.remove(re.size()-1);\n");
+                writer.write("return reNameCode(rename);\n");
+                writer.write("else{\n");
+                writer.write("return \"Wrong code\";\n");
+                writer.write("}\n");
                 if(stateToRE.containsKey(name)){
                     Set<String> reName=stateToRE.get(name);
                     for(String rn:reName){
+                        writer.write("re.add("+rn+");");
                         if(KWcode.containsKey(rn)){
-                            writer.write(KWcode.get(rn));
+
                         }
                         else if(REcode.containsKey(rn)){
                             writer.write(REcode.get(rn));
@@ -271,6 +288,22 @@ public class LexCompiler{
                         }
                     }
                 }
+                writer.write("}\n");
+            }
+            writer.write("public String reNameCode(String re){\n");
+            for(Map.Entry<String,String> entry:KWcode.entrySet()){
+                writer.write("if(re.equals("+entry.getKey()+"){");
+                writer.write(entry.getValue());
+                writer.write("}\n");
+            }
+            for(Map.Entry<String,String> entry:REcode.entrySet()){
+                writer.write("if(re.equals("+entry.getKey()+"){");
+                writer.write(entry.getValue());
+                writer.write("}\n");
+            }
+            for(Map.Entry<String,String> entry:OPcode.entrySet()){
+                writer.write("if(re.equals("+entry.getKey()+"){");
+                writer.write(entry.getValue());
                 writer.write("}\n");
             }
             //写入自定义函数
@@ -569,89 +602,176 @@ public class LexCompiler{
      * @param pf DFA编号
      * @return DFA实体类
      */
-    private DFA makeDFA(String reName,String input,int pf){
+    public DFA makeDFA(String reName,String input,int pf){
         //首先生成语法树
         Node node=makeTree(input);
+        //System.out.println(node.getIcon());
         REToTree.put(reName,node);
         DFA dfa=new DFA();
         dfa.Dstates=new HashMap<String,Set<Integer>>();
         dfa.Dtran=new HashMap<String,Map<Character,Set<Integer>>>();
 
         Stack<Node> nstack = new Stack<Node>();
-        Node current = node;
+        Node p = node;
+        Node current=new Node();
         //得到终态的位置
         int end=node.end;
         posToNode=new HashMap<Integer,Node>();
+        boolean out=false;
         //节点属性计算
         for(;;){
-            while(current != null){
+            if(out){
+                break;
+            }
+            while(p != null){
+                current=p;
+                current.tag=0;
                 nstack.push(current);
-                current = current.getLeft();
+                p = p.getLeft();
+            }
+            current = nstack.pop();
+            p=current;
+            while(current.tag==1){
+                current.setNullable(nullable(current));
+                current.setFirst(firstpos(current));
+                //System.out.println("ICON:"+current.getIcon()+" POS:"+current.getPostion()+" NULL:"+current.isNull+" LEAF:"+current.isLeaf()+" SIZE:"+current.getFirst().size());
+                current.setLast(lastpos(current));
+                //System.out.println("ICON:"+current.getIcon()+" POS:"+current.getPostion()+" NULL:"+current.isNull+" LEAF:"+current.isLeaf()+" SIZE:"+current.getFirst().size());
+                followpos(current);
+                //System.out.println("ICON:"+current.getIcon()+" POS:"+current.getPostion()+" NULL:"+current.isNull+" LEAF:"+current.isLeaf()+" SIZE:"+current.getFirst().size());
+                posToNode.put(current.getPostion(),current);
+                //System.out.println("ICON:"+current.getIcon()+" POS:"+current.getPostion()+" NULL:"+current.isNull+" LEAF:"+current.isLeaf()+" SIZE:"+current.getFirst().size());
+                if(!nstack.empty()){
+                    current = nstack.pop();
+                    p = current;
+                }
+                else{
+                    out=true;
+                    break;
+                }
+            }
+            current.tag=1;
+            nstack.push(current);
+            p=p.getRight();
+        }
+
+        //test
+        for(;;){
+            while(current!=null){
+                nstack.push(current);
+                current=current.getLeft();
             }
             if(!nstack.empty()){
-                current = nstack.pop();
-                nullable(current);
-                firstpos(current);
-                lastpos(current);
-                followpos(current);
-                posToNode.put(current.getPostion(),current);
-                current = current.getRight();
+                current=nstack.pop();
+                //System.out.println("ICON:"+current.getIcon()+" POS:"+current.getPostion()+" NULL:"+current.isNull+" LEAF:"+current.isLeaf()+" SIZE:"+current.getFirst().size());
+                current=current.getRight();
             }
             else{
                 break;
             }
         }
-
-        dfa.Dstates.put("notMarked",node.getFirst());
-        int i = 0;
-        while(dfa.Dstates.containsKey("notMarked")){
-            Set<Integer> temp=dfa.Dstates.get("notMarked");
-            //状态编号
-            String name="";
-            if(i!=0){
-                name=pf+"-";
+        //test end
+        Set<Integer> tt=node.getFollow();
+        tt.add(node.end);
+        node.setFollow(tt);
+        current=node;
+        nstack.clear();
+        for(;;){
+            while(current!=null){
+                if(current.getType()==NodeType.CAT){
+                    tt=current.getRight().getFollow();
+                    tt.addAll(current.getFollow());
+                    current.getRight().setFollow(tt);
+                    if(current.getRight().isNullable()){
+                        tt=current.getLeft().getFollow();
+                        tt.addAll(current.getFollow());
+                        current.getLeft().setFollow(tt);
+                    }
+                }
+                else if(current.getType()==NodeType.STAR){
+                    tt=current.getLeft().getFollow();
+                    tt.addAll(current.getFollow());
+                    current.getLeft().setFollow(tt);
+                }
+                else if(current.getType()==NodeType.OR){
+                    tt=current.getRight().getFollow();
+                    tt.addAll(current.getFollow());
+                    current.getRight().setFollow(tt);
+                    tt=current.getLeft().getFollow();
+                    tt.addAll(current.getFollow());
+                    current.getLeft().setFollow(tt);
+                }
+                nstack.push(current);
+                current=current.getLeft();
             }
-            if(temp.contains(end)){
-                name=name+i+"-T";
+            if(!nstack.empty()){
+                current=nstack.pop();
+                current=current.getRight();
             }
             else{
-                name=name+i+"-N";
+                break;
             }
-            dfa.Dstates.put(name,temp);
-            i++;
+        }
+        LinkedList<String> link=new LinkedList<String>();
+        String name="";
+        if(node.getFirst().contains(end)){
+            name=name+0+"-T";
+        }
+        else{
+            name=name+0+"-N";
+        }
+        link.add(name);
+        dfa.Dstates.put(name,node.getFirst());
+        int i = 1;
+        while(!link.isEmpty()){
+            //System.out.println("the "+i+" times");
+            String deal=link.remove();
+            Set<Integer> temp=dfa.Dstates.get(deal);
+            //System.out.println("oldSIZE: "+temp.size());
+            //状态编号
             for(char c:alphabet){
+                //System.out.println("alpha "+c);
                 Set<Integer> newS = new HashSet<Integer>();
                 for(int num:temp){
                     if(posToNode.get(num).getIcon()==c){
-                        if(!newS.isEmpty()){
-                            newS.retainAll((posToNode.get(num)).getFollow());
-                        }
-                        else{
-                            newS.addAll((posToNode.get(num)).getFollow());
-                        }
+                        //System.out.println("added");
+                        newS.addAll((posToNode.get(num)).getFollow());
+                        //System.out.println("newSIZE: "+newS.size());
                     }
                 }
-                if(!dfa.Dstates.containsValue(newS)){
-                    dfa.Dstates.replace("notMarked",newS);
+                //System.out.println(dfa.Dstates.containsValue(newS));
+                if((!dfa.Dstates.containsValue(newS))&&(newS.size()>0)){
+                    //System.out.println("new, stateSIZE: "+dfa.Dstates.size());
+                    name=pf+"-";
+                    if(newS.contains(end)){
+                        name=name+i+"-T";
+                    }
+                    else{
+                        name=name+i+"-N";
+                    }
+                    dfa.Dstates.put(name,newS);
+                    i++;
+                    link.add(name);
                 }
                 else{
-                    dfa.Dstates.remove("notMarked");
+                    //System.out.println("SKIP! "+dfa.Dstates.size());
                 }
 
-                if(dfa.Dtran.containsKey(name)){
-                    Map<Character,Set<Integer>> t=dfa.Dtran.get(name);
+                if(dfa.Dtran.containsKey(deal)){
+                    Map<Character,Set<Integer>> t=dfa.Dtran.get(deal);
                     t.put(c,newS);
-                    dfa.Dtran.replace(name,t);
+                    dfa.Dtran.replace(deal,t);
                 }
                 else{
                     Map<Character,Set<Integer>> add = new HashMap<Character,Set<Integer>>();
                     add.put(c,newS);
-                    dfa.Dtran.put(name,add);
+                    dfa.Dtran.put(deal,add);
                 }
             }
 
         }
 
+        dfa.trans();
         return dfa;
     }
 
@@ -666,36 +786,28 @@ public class LexCompiler{
         Stack<Node> stack=new Stack<Node>();
         //预处理
         String input=preTransform(in);
-        boolean inName=false;
-        String name="";
+        //System.out.println(input);
         for(char c:input.toCharArray()){
             if(c=='#'){
-                root=stack.pop();
+                root=new Node();
+                root.setIcon('.');
+                root.setType(NodeType.CAT);
+                Node left=stack.pop();
+                root.setLeft(left);
+                Node right=new Node();
+                right.setIcon(c);
+                right.isEnd=true;
+                root.setRight(right);
                 break;
             }
             Node node=new Node();
             node.setIcon(c);
-            alphabet.add(c);
             if(!atom.contains(c)){
-                if(inName){
-                   if(c=='}'){
-                       node=REToTree.get(name);
-                       stack.push(node);
-                       inName=false;
-                       name="";
-                   }
-                   else{
-                       name=name+c;
-                   }
-                }
-                else if(c=='{'){
-                    inName=true;
-                }
-                else{
-                    node.setType(NodeType.OPERAND);
-                    node.setIcon(c);
-                    stack.push(node);
-                }
+                node.setType(NodeType.OPERAND);
+                node.isLeaf=true;
+                node.setIcon(c);
+                stack.push(node);
+                alphabet.add(c);
             }
             else{
                 if(c=='*'){
@@ -752,6 +864,7 @@ public class LexCompiler{
                 current = nstack.pop();
                if(current.getRight()==null&&current.getLeft()==null){
                    current.setPostion(id);
+                   //System.out.println(current.getIcon()+" : "+current.getPostion());
                    id++;
                }
                 current = current.getRight();
@@ -761,6 +874,7 @@ public class LexCompiler{
             }
         }
         root.end=id-1;
+        //System.out.println("This end : "+root.end);
         return root;
     }
 
@@ -770,59 +884,71 @@ public class LexCompiler{
      * @return 转换后的只含有.*\{}？的后缀正则表达
      */
     private String preTransform(String in){
-        String input="";
-        char ca[]=in.toCharArray();
+        String input=in;
+        while(input.contains("{")){
+            String old=input;
+            input="";
+            char c[] =old.toCharArray();
+            for(int i=0;i<c.length;i++){
+                if(c[i]=='{'){
+                    String source="";
+                    i++;
+                    while(c[i]!='}'){
+                        source=source+c[i];
+                        i++;
+                    }
+                    source=re.get(source);
+                    input=input+"("+source+")";
+                }
+                else{
+                    input=input+c[i];
+                }
+            }
+        }
+
+        char ca[]=input.toCharArray();
+        String withPoint="";
         //第一步：加点
         for(int i=0;i<ca.length-1;i++){
             if(!isOperator(ca[i])){
                 if(ca[i]=='('){
-                    input=input+ca[i];
+                    withPoint=withPoint+ca[i];
                     continue;
                 }
-                if(ca[i]=='{'){
-                    while(ca[i]!='}'){
-                        input=input+ca[i];
-                        i++;
-                    }
-                    input=input+ca[i];
-                    if(!isOperator(ca[i+1])){
-                        input=input+".";
-                    }
-                    continue;
-                }
+
                 if(ca[i]==')'){
-                    input=input+ca[i];
-                    if(!isOperator((ca[i+1]))){
-                        input=input+".";
+                    withPoint=withPoint+ca[i];
+                    if(!isOperator((ca[i+1]))&&ca[i+1]!=')'){
+                        withPoint=withPoint+".";
                     }
                     continue;
                 }
                 if(ca[i+1]=='('){
-                    input=input+".";
+                    withPoint=withPoint+".";
                 }
                 else if(ca[i+1]==')'){
-                    input=input+ca[i];
+                    withPoint=withPoint+ca[i];
                 }
                 else if(isOperand(ca[i+1])){
-                    input=input+ca[i]+".";
+                    withPoint=withPoint+ca[i]+".";
                 }
                 else{
-                    input=input+ca[i];
+                    withPoint=withPoint+ca[i];
                 }
             }
             else if(ca[i]=='*'||ca[i]=='+'||ca[i]=='?'){
                 if(isOperand(ca[i+1])){
-                    input=input+ca[i];
-                    input=input+".";
+                    withPoint=withPoint+ca[i];
+                    withPoint=withPoint+".";
                 }
             }
             else{
-                input=input+ca[i];
+                withPoint=withPoint+ca[i];
             }
         }
 
-        input=input+ca[ca.length-1];
-        input=input+"#";
+        withPoint=withPoint+ca[ca.length-1];
+        withPoint=withPoint+"#";
         //System.out.println("we get "+input);
         String result="";
         Stack<Character> stack=new Stack<Character>();
@@ -836,7 +962,7 @@ public class LexCompiler{
         priority.put('|',2);
         priority.put('.',3);
         priority.put('(',1);
-        char cp[]=input.toCharArray();
+        char cp[]=withPoint.toCharArray();
         char top;
         for(int i=0;i<cp.length;i++){
             if(cp[i]=='#'){
@@ -845,13 +971,6 @@ public class LexCompiler{
                     result=result+top;
                 }
                 break;
-            }
-            if(cp[i]=='{'){
-                while(cp[i]!='}'){
-                    result=result+cp[i];
-                    i++;
-                }
-                result=result+cp[i];
             }
             else{
                 if(isOperator(cp[i])){
@@ -924,111 +1043,98 @@ public class LexCompiler{
      * 计算节点属性的方法
      * @param n 输入节点
      */
-    private void nullable(Node n){
-        nullable(n.getLeft());
-        nullable(n.getRight());
+    private boolean nullable(Node n){
         if(n.isLeaf()){
             if(n.isNull){
-                n.setNullable(true);
+                return true;
             }
-            n.setNullable(false);
+            return false;
         }
         if(n.getType()==NodeType.OR){
-            n.setNullable(n.getLeft().isNullable()||n.getRight().isNullable());
+            return n.getLeft().isNullable()||n.getRight().isNullable();
         }
         if(n.getType()==NodeType.CAT){
-            n.setNullable(n.getLeft().isNullable()&&n.getRight().isNullable());
+            return n.getLeft().isNullable()&&n.getRight().isNullable();
         }
         if(n.getType()==NodeType.STAR){
-            n.setNullable(true);
+            return true;
         }
-        n.setNullable(true);
+        return true;
     }
 
-    private void firstpos(Node n){
-        firstpos(n.getLeft());
-        firstpos(n.getRight());
+    private Set<Integer> firstpos(Node n){
         Set<Integer> result=new HashSet();
         if(n.isLeaf()){
             if(n.isNull){
-                n.setFirst(null);
-                return;
+                return result;
             }
             result.add(n.getPostion());
+            return result;
         }
-        if(n.getType()==NodeType.OR){
+        else if(n.getType()==NodeType.OR){
             result=n.getLeft().getFirst();
-            result.retainAll(n.getRight().getFirst());
+            result.addAll(n.getRight().getFirst());
         }
-        if(n.getType()==NodeType.CAT){
+        else if(n.getType()==NodeType.CAT){
             if(n.getLeft().isNullable()){
                 result=n.getLeft().getFirst();
-                result.retainAll(n.getRight().getFirst());
+                result.addAll(n.getRight().getFirst());
             }
             else{
                 result=n.getLeft().getFirst();
             }
         }
-        if(n.getType()==NodeType.STAR){
+        else if(n.getType()==NodeType.STAR){
             result=n.getLeft().getFirst();
         }
-        n.setFirst(result);
+        return result;
     }
 
-    private void lastpos(Node n){
+    private Set<Integer> lastpos(Node n){
         Set<Integer> result=new HashSet();
-        lastpos(n.getLeft());
-        lastpos(n.getRight());
         if(n.isLeaf()){
             if(n.isNull){
-                n.setLast(null);
-                return;
+                return result;
             }
             result.add(n.getPostion());
         }
-        if(n.getType()==NodeType.OR){
+        else if(n.getType()==NodeType.OR){
             result=n.getLeft().getLast();
-            result.retainAll(n.getRight().getLast());
+            result.addAll(n.getRight().getLast());
         }
-        if(n.getType()==NodeType.CAT){
+        else if(n.getType()==NodeType.CAT){
             if(n.getRight().isNullable()){
                 result=n.getLeft().getLast();
-                result.retainAll(n.getRight().getLast());
+                result.addAll(n.getRight().getLast());
             }
             else{
                 result=n.getRight().getLast();
             }
         }
-        if(n.getType()==NodeType.STAR){
+        else if(n.getType()==NodeType.STAR){
             result=n.getLeft().getLast();
         }
-        n.setLast(result);
+        return result;
     }
 
     private void followpos(Node n){
-        firstpos(n.getLeft());
-        firstpos(n.getRight());
-        lastpos(n.getLeft());
-        lastpos(n.getRight());
-        if(n.getType()==NodeType.CAT){
-            Set<Integer> toAdd = n.getRight().getFirst();
-            Set<Integer> host = n.getLeft().getLast();
-            for(int i:host){
-                Node no=posToNode.get(i);
-                Set<Integer> sss=no.getFollow();
-                sss.retainAll(toAdd);
-                no.setFollow(sss);
-                posToNode.replace(i,no);
+        Set<Integer> result=new HashSet();
+        if((n.getType()==NodeType.CAT)||(n.getType()==NodeType.STAR)){
+            //System.out.println(n.getIcon()+" "+ n.getType());
+            Set<Integer> toAdd = new HashSet<Integer>();
+            Set<Integer> host = new HashSet<Integer>();
+            if(n.getType()==NodeType.CAT){
+                toAdd = n.getRight().getFirst();
+                host = n.getLeft().getLast();
             }
-            return;
-        }
-        if(n.getType()==NodeType.STAR){
-            Set<Integer> toAdd=n.getFirst();
-            Set<Integer> host=n.getLast();
+            else if(n.getType()==NodeType.STAR){
+                toAdd=n.getFirst();
+                host=n.getLast();
+            }
             for(int i:host){
                 Node no=posToNode.get(i);
                 Set<Integer> sss=no.getFollow();
-                sss.retainAll(toAdd);
+                sss.addAll(toAdd);
                 no.setFollow(sss);
                 posToNode.replace(i,no);
             }

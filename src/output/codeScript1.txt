@@ -17,6 +17,7 @@ public class CodeScript{
     private ArrayList<String> re;
     private String currentState;
     private String out;
+    private ArrayList<Integer> index;
 
     public CodeScript(){
         IDTable=new HashMap<String,IDetail>();
@@ -28,6 +29,7 @@ public class CodeScript{
         re=new ArrayList<String>();
         canNotGo=false;
         currentState="I0";
+        index=new ArrayList<Integer>();
     }
 
     public String getNextToken(){
