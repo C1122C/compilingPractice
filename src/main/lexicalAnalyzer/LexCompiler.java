@@ -10,13 +10,7 @@ import main.dataStructure.DFA;
 import main.dataStructure.Node;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Stack;
-import java.util.LinkedList;
+import java.util.*;
 
 public class LexCompiler{
 
@@ -37,7 +31,7 @@ public class LexCompiler{
     /*由正则表达式名称到对应树的映射*/
     private Map<String,Node> REToTree;
     /*由正则表达式名称到DFA的映射*/
-    private Map<String,DFA> REToDFA;
+    public Map<String,DFA> REToDFA;
     /*由文件编写者自己定义的代码*/
     private ArrayList<Character> part3;
     /*文件中需要直接拷贝的部分*/
@@ -116,21 +110,42 @@ public class LexCompiler{
     public void DFAmerge(){
         for(Map.Entry<String,DFA> entry:REToDFA.entrySet()){
             String rere=entry.getKey();
-            Map<String,Map<Character,String>> toadd=entry.getValue().UsableDtran;
-            map1.putAll(toadd);
+            System.out.println("GET RE: "+rere);
+            DFA adfa=entry.getValue();
+            Map<String,Map<Character,String>> toadd=new HashMap<String, Map<Character, String>>();
+            for(Map.Entry<String,Map<Character,String>> en:adfa.UsableDtran.entrySet()){
+                String rname=en.getKey();
+                Map<Character,String> newPath=new HashMap<Character, String>();
+                for(Map.Entry<Character,String> e:en.getValue().entrySet()){
+                    newPath.put(e.getKey(),e.getValue());
+                }
+                map1.put(rname,newPath);
+                toadd.put(rname,newPath);
+            }
+
+            //System.out.println("WHEN ASSIGN: "+map1.get("1-0-N").size());
             for(String originalS:toadd.keySet()){
                 if(originalS.contains("T")){
                     map3.put(originalS,rere);
                 }
             }
         }
+        /*for(Map.Entry<String,Map<Character,String>> entr:map1.entrySet()){
+            System.out.println("FOR state "+entr.getKey()+" : ");
+            for(Map.Entry<Character,String> en:entr.getValue().entrySet()){
+                System.out.println("with "+en.getKey()+" : "+en.getValue());
+            }
+        }*/
         int count=0;
         for(String s:map1.keySet()){
-            if(s.equals("0-N")||s.equals("0-T")){
+            if(s.contains("-0-N")||s.contains("-0-T")){
                 count++;
                 map2.put(s,"I"+finalID);
             }
         }
+        /*for(Map.Entry<String,String> entry:map2.entrySet()){
+            System.out.println("GET: "+entry.getKey()+" WITH ID: "+entry.getValue());
+        }*/
         if(count>1){
             queue.add("I"+finalID);
             finalID++;
@@ -138,7 +153,7 @@ public class LexCompiler{
                 stateMerge();
             }
         }
-        for(Map.Entry<String,String> entry:map3.entrySet()){
+        /*for(Map.Entry<String,String> entry:map3.entrySet()){
             String originalS=entry.getKey();
             String r=entry.getValue();
             if(map2.keySet().contains(originalS)){
@@ -154,6 +169,13 @@ public class LexCompiler{
                 stateToRE.put(newSt,ss);
             }
         }
+        //test
+        for(Map.Entry<String,Map<Character,String>> entry:map1.entrySet()){
+            System.out.println("FOR state "+entry.getKey()+" : ");
+            for(Map.Entry<Character,String> en:entry.getValue().entrySet()){
+                System.out.println("with "+en.getKey()+" : "+en.getValue());
+            }
+        }*/
     }
 
     /**
@@ -162,21 +184,28 @@ public class LexCompiler{
     private void stateMerge(){
         Map newMap=new HashMap<Character,String>();
         String newState=queue.remove();
+        System.out.println("ID: "+newState);
         ArrayList<String> originalS=new ArrayList<String>();
         ArrayList<Character> path=new ArrayList<Character>();
         ArrayList<String> destination=new ArrayList<String>();
-        for(Map.Entry<String,String> entry:map2.entrySet()){
+        Iterator<Map.Entry<String,String>> it=map2.entrySet().iterator();
+        while(it.hasNext()){
+            Map.Entry<String,String> entry=it.next();
             if(entry.getValue().equals(newState)){
                 originalS.add(entry.getKey());
+                System.out.println("s: "+entry.getKey()+" id: "+newState);
+                it.remove();
             }
         }
+
         for(String s:originalS){
-            Map<Character,String> temp=map1.get(s);
-            for(Map.Entry<Character,String> entry:temp.entrySet()){
+            System.out.println("original is "+s);
+            System.out.println(map1.containsKey(s)+" "+map2.get(s));
+            for(Map.Entry<Character,String> entry:map1.get(s).entrySet()){
                 path.add(entry.getKey());
                 destination.add(entry.getValue());
+                System.out.println("WITH "+entry.getKey()+" TO "+entry.getValue());
             }
-            map1.remove(s);
         }
         for(int i=0;i<path.size();i++){
             int count=0;
@@ -191,12 +220,36 @@ public class LexCompiler{
                     destination.remove(j);
                 }
             }
+            String name="";
             if(count>0){
-                String name="I"+finalID;
+                name="I"+finalID;
                 finalID++;
                 queue.add(name);
+                for(int k=0;k<destination.size();k++){
+                    if(newOriginal.contains(destination.get(k))){
+                        destination.set(k,name);
+                    }
+                }
+                Iterator<Map.Entry<Character,String>> iterator=newMap.entrySet().iterator();
+                ArrayList<Character> ids=new ArrayList<Character>();
+                while(iterator.hasNext()){
+                    Map.Entry<Character,String> entry=iterator.next();
+                    if(newOriginal.contains(entry.getValue())){
+                        char id=entry.getKey();
+                        ids.add(id);
+                        iterator.remove();
+                    }
+                }
+                for(char sid:ids){
+                    newMap.put(sid,name);
+                }
                 for(String s:newOriginal){
-                    map2.put(s,name);
+                    if(map2.keySet().contains(s)){
+                        map2.put(map2.get(s),name);
+                    }
+                    else{
+                        map2.put(s,name);
+                    }
                 }
                 newMap.put(check,name);
             }
@@ -204,13 +257,31 @@ public class LexCompiler{
                 newMap.put(check,destination.get(i));
             }
         }
+        for(String s:originalS){
+            map1.remove(s);
+        }
         map1.put(newState,newMap);
+        Iterator<Map.Entry<String,String>> iterator=map2.entrySet().iterator();
+        Set<String> ids=new HashSet<String>();
+        while(iterator.hasNext()){
+            Map.Entry<String,String> entry=iterator.next();
+            if(originalS.contains(entry.getKey())){
+                String id=entry.getValue();
+                ids.add(id);
+                iterator.remove();
+            }
+        }
+        for(String sid:ids){
+            map2.put(newState,sid);
+        }
         for(Map.Entry<String,Map<Character,String>> entry:map1.entrySet()){
-            Map<Character,String> temp=entry.getValue();
+            Map<Character,String> temp=new HashMap<Character,String>();
+            for(Map.Entry<Character,String> e:entry.getValue().entrySet()){
+                temp.put(e.getKey(),e.getValue());
+            }
             for(Map.Entry<Character,String> en:temp.entrySet()){
                 if(originalS.contains(en.getValue())){
-                    temp.replace(en.getKey(),en.getValue(),newState);
-                    map1.replace(entry.getKey(),entry.getValue(),temp);
+                    map1.get(entry.getKey()).replace(en.getKey(),newState);
                 }
             }
         }
@@ -715,10 +786,10 @@ public class LexCompiler{
         LinkedList<String> link=new LinkedList<String>();
         String name="";
         if(node.getFirst().contains(end)){
-            name=name+0+"-T";
+            name=pf+"-"+0+"-T";
         }
         else{
-            name=name+0+"-N";
+            name=pf+"-"+0+"-N";
         }
         link.add(name);
         dfa.Dstates.put(name,node.getFirst());

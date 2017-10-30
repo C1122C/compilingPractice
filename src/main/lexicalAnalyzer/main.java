@@ -15,22 +15,29 @@ public class main{
         LexCompiler lex=new LexCompiler();
         lex.re.put("id","(cc)|(cl)|(ccj)");
         lex.re.put("letter","a|b|c");
+        lex.re.put("r1","{id}|a*({letter}c)");
+        lex.re.put("r2","0|1|2|3|4|5");
+        lex.re.put("r3","a|(b|c)*ac");
         DFA s1=lex.makeDFA("r1","{id}|a*({letter}c)",1);
         DFA s2=lex.makeDFA("r2","0|1|2|3|4|5",2);
         DFA s3=lex.makeDFA("r3","a|(b|c)*ac",3);
+        lex.REToDFA.put("r1",s1);
+        lex.REToDFA.put("r2",s2);
+        lex.REToDFA.put("r3",s3);
+        lex.DFAmerge();
 
-        for(Map.Entry<String,Set<Integer>> entry:s3.Dstates.entrySet()){
+        /*for(Map.Entry<String,Set<Integer>> entry:s1.Dstates.entrySet()){
             System.out.println("FOR state "+entry.getKey()+" : ");
             for(int i:entry.getValue()){
                 System.out.print(i+", ");
             }
             System.out.print('\n');
         }
-        for(Map.Entry<String,Map<Character,String>> entry:s3.UsableDtran.entrySet()){
+        for(Map.Entry<String,Map<Character,String>> entry:s1.UsableDtran.entrySet()){
             System.out.println("FOR state "+entry.getKey()+" : ");
             for(Map.Entry<Character,String> en:entry.getValue().entrySet()){
                 System.out.println("with "+en.getKey()+" : "+en.getValue());
             }
-        }
+        }*/
     }
 }
