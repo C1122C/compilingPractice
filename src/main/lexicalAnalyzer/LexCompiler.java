@@ -1,7 +1,7 @@
 package main.lexicalAnalyzer;
 /**
  * lex功能实现类，读取文法生成词法分析器程序
- * 本程序支持的正则表达符号包括：*、+、？、（）、|、{}。
+ * 本程序支持的正则表达符号包括：*、+、？、（）、|、{}和自定义转义符$。
  */
 import main.dataStructure.Node;
 import main.dataStructure.DFA;
@@ -19,7 +19,7 @@ public class LexCompiler{
     /*本程序支持的正则表达式符号集*/
     private Set<Character> atom;
     /*正则表达式名称-文法*/
-    public Map<String,String> re;
+    private Map<String,String> re;
     /*正则表达式-代码*/
     private Map<String,String> REcode;
     /*关键字-代码*/
@@ -31,7 +31,7 @@ public class LexCompiler{
     /*由正则表达式名称到对应树的映射*/
     private Map<String,Node> REToTree;
     /*由正则表达式名称到DFA的映射*/
-    public Map<String,DFA> REToDFA;
+    private Map<String,DFA> REToDFA;
     /*由文件编写者自己定义的代码*/
     private ArrayList<Character> part3;
     /*文件中需要直接拷贝的部分*/
@@ -46,12 +46,17 @@ public class LexCompiler{
     private Map<String,String> map3;
     /*状态合并工具*/
     private LinkedList<String> queue;
+    /*节点编号计数器*/
     private int finalID;
     /*状态-正则映射*/
     private Map<String,Set<String>> stateToRE;
+    /*记录正则定义顺序*/
     private ArrayList<String> order;
+    /*暂存文件内容*/
     private ArrayList<Character> chars;
+    /*读头位置*/
     private int forward;
+    /*行号*/
     private int line;
 
 
@@ -97,21 +102,7 @@ public class LexCompiler{
         //遍历文法，逐个生成DFA
         int i=0;
         for(String s:order){
-            //System.out.println("name: "+s+" des: "+re.get(s));
             DFA dfa=makeDFA(s,re.get(s),i);
-            /*for(Map.Entry<String,Set<Integer>> entry:dfa.Dstates.entrySet()){
-                System.out.println("FOR state "+entry.getKey()+" : ");
-                for(int j:entry.getValue()){
-                    System.out.print(j+", ");
-                }
-                System.out.print('\n');
-            }
-            for(Map.Entry<String,Map<Character,String>> entry:dfa.UsableDtran.entrySet()){
-                System.out.println("FOR state "+entry.getKey()+" : ");
-                for(Map.Entry<Character,String> en:entry.getValue().entrySet()){
-                    System.out.println("with "+en.getKey()+" : "+en.getValue());
-                }
-            }*/
             i++;
             REToDFA.put(s,dfa);
         }
@@ -140,19 +131,13 @@ public class LexCompiler{
                 toadd.put(rname,newPath);
             }
 
-            //System.out.println("WHEN ASSIGN: "+map1.get("1-0-N").size());
             for(String originalS:toadd.keySet()){
                 if(originalS.contains("T")){
                     map3.put(originalS,rere);
                 }
             }
         }
-        /*for(Map.Entry<String,Map<Character,String>> entr:map1.entrySet()){
-            System.out.println("FOR state "+entr.getKey()+" : ");
-            for(Map.Entry<Character,String> en:entr.getValue().entrySet()){
-                System.out.println("with "+en.getKey()+" : "+en.getValue());
-            }
-        }*/
+
         int count=0;
         Set toadd=new HashSet<String>();
         for(String s:map1.keySet()){
@@ -162,9 +147,7 @@ public class LexCompiler{
             }
         }
         map2.put("I"+finalID,toadd);
-        /*for(Map.Entry<String,String> entry:map2.entrySet()){
-            System.out.println("GET: "+entry.getKey()+" WITH ID: "+entry.getValue());
-        }*/
+
         if(count>1){
             queue.add("I"+finalID);
             finalID++;
@@ -685,30 +668,7 @@ public class LexCompiler{
                 part3.add(content.get(currentP));
             }
         }
-        /*System.out.println("COPY_PART:");
-        for(char ch:codeCopy){
-            System.out.print(ch);
-        }
-        System.out.println("PART3_PART:");
-        for(char ch:part3){
-            System.out.print(ch);
-        }
-        System.out.println("RE_PART:");
-        for(Map.Entry<String,String> entry:re.entrySet()){
-            System.out.println("NAME: "+entry.getKey()+" DES: "+entry.getValue());
-        }
-        System.out.println("RE_PART:");
-        for(Map.Entry<String,String> entry:REcode.entrySet()){
-            System.out.println("NAME: "+entry.getKey()+" CODE: "+entry.getValue());
-        }
-        System.out.println("KW_PART:");
-        for(Map.Entry<String,String> entry:KWcode.entrySet()){
-            System.out.println("NAME: "+entry.getKey()+" CODE: "+entry.getValue());
-        }
-        System.out.println("OP_PART:");
-        for(Map.Entry<String,String> entry:OPcode.entrySet()){
-            System.out.println("NAME: "+entry.getKey()+" CODE: "+entry.getValue());
-        }*/
+
         return "Success!";
 
     }
@@ -720,7 +680,7 @@ public class LexCompiler{
      * @param pf DFA编号
      * @return DFA实体类
      */
-    public DFA makeDFA(String reName,String input,int pf){
+    private DFA makeDFA(String reName,String input,int pf){
         //首先生成语法树
         Node node=makeTree(input);
         //System.out.println(node.getIcon());
@@ -773,22 +733,7 @@ public class LexCompiler{
             p=p.getRight();
         }
 
-        //test
-        /*for(;;){
-            while(current!=null){
-                nstack.push(current);
-                current=current.getLeft();
-            }
-            if(!nstack.empty()){
-                current=nstack.pop();
-                //System.out.println("ICON:"+current.getIcon()+" POS:"+current.getPostion()+" NULL:"+current.isNull+" LEAF:"+current.isLeaf()+" SIZE:"+current.getFirst().size());
-                current=current.getRight();
-            }
-            else{
-                break;
-            }
-        }*/
-        //test end
+
         Set<Integer> tt=node.getFollow();
         tt.add(node.end);
         node.setFollow(tt);
@@ -848,18 +793,13 @@ public class LexCompiler{
             //System.out.println("oldSIZE: "+temp.size());
             //状态编号
             for(char c:alphabet){
-                //System.out.println("alpha "+c);
                 Set<Integer> newS = new HashSet<Integer>();
                 for(int num:temp){
                     if(posToNode.get(num).getIcon()==c){
-                        //System.out.println("added");
                         newS.addAll((posToNode.get(num)).getFollow());
-                        //System.out.println("newSIZE: "+newS.size());
                     }
                 }
-                //System.out.println(dfa.Dstates.containsValue(newS));
                 if((!dfa.Dstates.containsValue(newS))&&(newS.size()>0)){
-                    //System.out.println("new, stateSIZE: "+dfa.Dstates.size());
                     name=pf+"-";
                     if(newS.contains(end)){
                         name=name+i+"-T";
@@ -890,13 +830,6 @@ public class LexCompiler{
         }
 
         dfa.trans();
-        /*System.out.println(reName);
-        for(Map.Entry<String,Map<Character,String>> entry:dfa.UsableDtran.entrySet()){
-            System.out.println("FOR state "+entry.getKey()+" : ");
-            for(Map.Entry<Character,String> en:entry.getValue().entrySet()){
-                System.out.println("with "+en.getKey()+" : "+en.getValue());
-            }
-        }*/
         return dfa;
     }
 
@@ -1104,9 +1037,6 @@ public class LexCompiler{
 
         withPoint=withPoint+ca[ca.length-1];
         withPoint=withPoint+"#";
-        //System.out.println("HERE?");
-        //System.out.println("AFTER POINT: "+withPoint);
-        //System.out.println("we get "+input);
         String result="";
         Stack<Character> stack=new Stack<Character>();
         stack.push('#');
@@ -1305,7 +1235,11 @@ public class LexCompiler{
         }
     }
 
-    public void getTokens(String name){
+    /**
+     * 输出输入文件的全部token
+     * @param name 输入文件名
+     */
+    private void getTokens(String name){
         chars=new ArrayList<Character>();
         forward=0;
         line=1;
@@ -1331,6 +1265,10 @@ public class LexCompiler{
 
     }
 
+    /**
+     * 读取下一个token
+     * @return
+     */
     private boolean getNextToken(){
         ArrayList<String> reget=new ArrayList<String>();
         ArrayList<Integer> index=new ArrayList<Integer>();
@@ -1383,9 +1321,6 @@ public class LexCompiler{
                 }
                 char now=chars.get(head);
                 head++;
-                //System.out.println("IN STATE: "+currentState.get(j));
-                //System.out.println("GET CHAR: "+now);
-                //System.out.println("END IS:"+chars.get(chars.size()-1));
 
                 if (now == '\n'||now=='\r') {
                     break;
@@ -1414,12 +1349,10 @@ public class LexCompiler{
                 longest=i;
             }
         }
-       // System.out.println("long: "+longest);
         int l=index.get(longest);
         Set<String> result=new HashSet<String>();
         for(int i=0;i<reget.size();i++){
             if(index.get(i)==l){
-                //System.out.println("ADD ONE: "+reget.get(i));
                 result.add(reget.get(i));
             }
         }
@@ -1459,7 +1392,6 @@ public class LexCompiler{
         forward=index.get(longest);
         System.out.println(out);
         if(index.get(longest)==chars.size()){
-            //System.out.println("HERE OUT! "+chars.size()+" 4is in"+chars.indexOf('4'));
             return true;
         }
         return false;
