@@ -3,12 +3,8 @@ import main.dataStructure.Node;
 import main.lexicalAnalyzer.LexCompiler;
 import main.lexicalAnalyzer.LexCompiler;
 import main.dataStructure.DFA;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.HashSet;
 
-import java.util.Stack;
+import java.util.*;
 
 public class main{
     public static void main(String args[]){

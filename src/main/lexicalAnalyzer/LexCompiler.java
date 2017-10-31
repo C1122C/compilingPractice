@@ -572,7 +572,12 @@ public class LexCompiler{
                 //正在读取正则名称
                 if(inName){
                     //遇到一个正则
-                    if(c=='{'){
+                    if(c=='$'){
+                        reName=reName+c;
+                        reName=reName+content.get(currentP+1);
+                        currentP+=2;
+                    }
+                    else if(c=='{'){
                         codeType=1;
                         currentP++;
                     }
@@ -595,7 +600,12 @@ public class LexCompiler{
                         reName=reName.substring(1,reName.length()-1);
                     }
                     if(trans){
-                        if(c=='}'){
+                        if(c=='$'){
+                            reCode=reCode+c;
+                            reCode=reCode+content.get(currentP+1);
+                            currentP+=2;
+                        }
+                        else if(c=='}'){
                             if(reName.length()!=0){
                                 switch(codeType){
                                     case 1:REcode.put(reName,reCode);break;
@@ -764,7 +774,7 @@ public class LexCompiler{
         }
 
         //test
-        for(;;){
+        /*for(;;){
             while(current!=null){
                 nstack.push(current);
                 current=current.getLeft();
@@ -777,7 +787,7 @@ public class LexCompiler{
             else{
                 break;
             }
-        }
+        }*/
         //test end
         Set<Integer> tt=node.getFollow();
         tt.add(node.end);
@@ -895,7 +905,8 @@ public class LexCompiler{
         //预处理
         String input=preTransform(in);
         //System.out.println(input);
-        for(char c:input.toCharArray()){
+        for(int i=0;i<input.toCharArray().length;i++){
+            char c=input.toCharArray()[i];
             if(c=='#'){
                 root=new Node();
                 root.setIcon('.');
@@ -909,13 +920,23 @@ public class LexCompiler{
                 break;
             }
             Node node=new Node();
-            node.setIcon(c);
+            if(c=='$'){
+                node.setIcon(input.toCharArray()[i+1]);
+                i++;
+            }
+            else{
+                node.setIcon(c);
+            }
             if(!atom.contains(c)){
                 node.setType(NodeType.OPERAND);
                 node.isLeaf=true;
-                node.setIcon(c);
                 stack.push(node);
-                alphabet.add(c);
+                if(c=='$'){
+                    alphabet.add(input.toCharArray()[i]);
+                }
+                else{
+                    alphabet.add(c);
+                }
             }
             else{
                 if(c=='*'){
@@ -993,16 +1014,21 @@ public class LexCompiler{
      */
     private String preTransform(String in){
         String input=in;
-        //ystem.out.println("INTO PRE : "+in);
-        while(input.contains("{")){
+        System.out.println("INTO PRE : "+in);
+        while((input.contains("{"))&&(!input.contains("${"))){
             String old=input;
             input="";
             char c[] =old.toCharArray();
             for(int i=0;i<c.length;i++){
-                if(c[i]=='{'){
+                if(c[i]=='$'){
+                    input=input+c[i];
+                    input=input+c[i+1];
+                    i++;
+                }
+                else if(c[i]=='{'){
                     String source="";
                     i++;
-                    while(c[i]!='}'){
+                    while(c[i]!='}'||c[i-1]=='$'){
                         source=source+c[i];
                         i++;
                     }
@@ -1020,12 +1046,25 @@ public class LexCompiler{
         //第一步：加点
         for(int i=0;i<ca.length-1;i++){
             if(!isOperator(ca[i])){
-                if(ca[i]=='('){
+                if(ca[i]=='$'){
+                    withPoint=withPoint+ca[i];
+                    if(i<ca.length-2){
+                        withPoint=withPoint+ca[i+1];
+                        i++;
+                        if(ca[i+1]=='('||isOperand(ca[i+1])){
+                            if(!(ca[i+1]==')')){
+                                withPoint=withPoint+".";
+                            }
+                        }
+                    }
+                    continue;
+                }
+                else if(ca[i]=='('){
                     withPoint=withPoint+ca[i];
                     continue;
                 }
 
-                if(ca[i]==')'){
+                else if(ca[i]==')'){
                     withPoint=withPoint+ca[i];
                     if(!isOperator((ca[i+1]))&&ca[i+1]!=')'){
                         withPoint=withPoint+".";
@@ -1059,7 +1098,7 @@ public class LexCompiler{
         withPoint=withPoint+ca[ca.length-1];
         withPoint=withPoint+"#";
         //System.out.println("HERE?");
-        //System.out.println("AFTER POINT: "+withPoint.length());
+        System.out.println("AFTER POINT: "+withPoint);
         //System.out.println("we get "+input);
         String result="";
         Stack<Character> stack=new Stack<Character>();
@@ -1076,13 +1115,19 @@ public class LexCompiler{
         char cp[]=withPoint.toCharArray();
         char top;
         for(int i=0;i<cp.length;i++){
-            //System.out.println("time: "+i+" char: "+cp[i]);
+            //System.out.println("string: "+result+" i: "+i);
             if(cp[i]=='#'){
                 while(!stack.empty()){
                     top=stack.pop();
                     result=result+top;
                 }
                 break;
+            }
+            else if(cp[i]=='$'){
+                result=result+cp[i];
+                i=i+1;
+                result=result+cp[i];
+
             }
             else{
                 if(isOperator(cp[i])){
@@ -1290,7 +1335,7 @@ public class LexCompiler{
         while(chars.get(forward)=='\n'||chars.get(forward)=='\r'){
             forward++;
             line++;
-            System.out.println("ADD ONCE!");
+            //System.out.println("ADD ONCE!");
             if(forward==chars.size()){
                 return true;
             }
@@ -1318,16 +1363,22 @@ public class LexCompiler{
             canNotGo=false;
             boolean end=false;
             while(!canNotGo){
-                char now=chars.get(head);
-                head++;
-                //System.out.println("IN STATE: "+currentState.get(j));
-                //System.out.println("GET CHAR: "+now);
                 if(currentState.get(j).contains("T")){
                     reget.add(currentRE.get(j));
                     index.add(head);
                     endLine.add(end);
-                    //System.out.println("ALREADY ADD, SIZE:"+reget.size());
+                    if(head==chars.size()){
+                        end=true;
+                        break;
+                    }
+                    //System.out.println("ALREADY ADD: "+currentRE.get(j)+" "+head);
+
                 }
+                char now=chars.get(head);
+                head++;
+                //System.out.println("IN STATE: "+currentState.get(j));
+                //System.out.println("GET CHAR: "+now);
+                //System.out.println("END IS:"+chars.get(chars.size()-1));
 
                 if (now == '\n'||now=='\r') {
                     break;
@@ -1341,16 +1392,11 @@ public class LexCompiler{
                 else{
                     canNotGo=true;
                 }
-                if(head==chars.size()){
-                    end=true;
-                    //System.out.println("OUT WHEN CHAR IS:"+now);
-                    break;
-                }
             }
 
         }
         if(reget.size()==0){
-            System.out.println("GOT AN ERROR IN LINE "+line);
+            System.out.println("GOT AN ERROR IN LINE "+(1+line/2));
             return true;
         }
         int longest=0;
@@ -1372,18 +1418,16 @@ public class LexCompiler{
         }
         if(!out.contains(">")){
             int i=forward;
-            while(i<index.get(longest)-1){
+            while(i<index.get(longest)){
                 out=out+chars.get(i);
                 i++;
             }
-            if(index.get(longest)==chars.size()){
-                out=out+chars.get(chars.size()-1);
-            }
             out=out+">";
         }
-        forward=index.get(longest)-1;
+        forward=index.get(longest);
         System.out.println(out);
         if(index.get(longest)==chars.size()){
+            //System.out.println("HERE OUT! "+chars.size()+" 4is in"+chars.indexOf('4'));
             return true;
         }
         return false;
