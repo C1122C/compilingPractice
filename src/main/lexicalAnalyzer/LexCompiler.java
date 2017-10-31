@@ -890,6 +890,13 @@ public class LexCompiler{
         }
 
         dfa.trans();
+        /*System.out.println(reName);
+        for(Map.Entry<String,Map<Character,String>> entry:dfa.UsableDtran.entrySet()){
+            System.out.println("FOR state "+entry.getKey()+" : ");
+            for(Map.Entry<Character,String> en:entry.getValue().entrySet()){
+                System.out.println("with "+en.getKey()+" : "+en.getValue());
+            }
+        }*/
         return dfa;
     }
 
@@ -1014,7 +1021,7 @@ public class LexCompiler{
      */
     private String preTransform(String in){
         String input=in;
-        System.out.println("INTO PRE : "+in);
+        //System.out.println("INTO PRE : "+in);
         while((input.contains("{"))&&(!input.contains("${"))){
             String old=input;
             input="";
@@ -1098,7 +1105,7 @@ public class LexCompiler{
         withPoint=withPoint+ca[ca.length-1];
         withPoint=withPoint+"#";
         //System.out.println("HERE?");
-        System.out.println("AFTER POINT: "+withPoint);
+        //System.out.println("AFTER POINT: "+withPoint);
         //System.out.println("we get "+input);
         String result="";
         Stack<Character> stack=new Stack<Character>();
@@ -1387,9 +1394,11 @@ public class LexCompiler{
                     break;
                 }
                 if(REToDFA.get(currentRE.get(j)).UsableDtran.get(currentState.get(j)).keySet().contains(now)){
+                    //System.out.println("CAN MOVE ON");
                     currentState.set(j,REToDFA.get(currentRE.get(j)).UsableDtran.get(currentState.get(j)).get(now));
                 }
                 else{
+                    //System.out.println("OUT");
                     canNotGo=true;
                 }
             }
@@ -1405,17 +1414,40 @@ public class LexCompiler{
                 longest=i;
             }
         }
-        String result=reget.get(longest);
+       // System.out.println("long: "+longest);
+        int l=index.get(longest);
+        Set<String> result=new HashSet<String>();
+        for(int i=0;i<reget.size();i++){
+            if(index.get(i)==l){
+                //System.out.println("ADD ONE: "+reget.get(i));
+                result.add(reget.get(i));
+            }
+        }
         String out="";
-        if(KWcode.keySet().contains(result)){
-            out=KWcode.get(result);
+        boolean ok=false;
+        for(String sre:result){
+            if(KWcode.keySet().contains(sre)){
+                out=KWcode.get(sre);
+                ok=true;
+            }
         }
-        else if(REcode.keySet().contains(result)){
-            out=REcode.get(result);
+        if(!ok){
+            for(String sre:result){
+                if(REcode.keySet().contains(sre)){
+                    out=REcode.get(sre);
+                    ok=true;
+                }
+            }
         }
-        else if(OPcode.keySet().contains(result)){
-            out=OPcode.get(result);
+        if(!ok){
+            for(String sre:result){
+                if(OPcode.keySet().contains(sre)){
+                    out=OPcode.get(sre);
+                    ok=true;
+                }
+            }
         }
+
         if(!out.contains(">")){
             int i=forward;
             while(i<index.get(longest)){
