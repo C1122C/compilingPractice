@@ -13,18 +13,20 @@ import java.util.Stack;
 public class main{
     public static void main(String args[]){
         LexCompiler lex=new LexCompiler();
-        lex.re.put("id","(cc)|(cl)|(ccj)");
-        lex.re.put("letter","a|b|c");
+        lex.getLex("lexFile");
+        /*lex.re.put("id","{letter}+({letter}|{number})*");
+        lex.re.put("letter","a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|v|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z");
+        lex.re.put("num","0|1|2|3|4|5|6|7|8|9");
         lex.re.put("r1","{id}|a*({letter}c)");
         lex.re.put("r2","0|1|2|3|4|5");
         lex.re.put("r3","a|(b|c)*ac");
-        DFA s1=lex.makeDFA("r1","{id}|a*({letter}c)",1);
-        DFA s2=lex.makeDFA("r2","0|1|2|3|4|5",2);
-        DFA s3=lex.makeDFA("r3","a|(b|c)*ac",3);
-        lex.REToDFA.put("r1",s1);
+        DFA s1=lex.makeDFA("letter","a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|v|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z",1);
+        DFA s2=lex.makeDFA("num","0|1|2|3|4|5|6|7|8|9",2);
+        DFA s3=lex.makeDFA("id","{letter}+({letter}|{num})*",3);
+        /*lex.REToDFA.put("r1",s1);
         lex.REToDFA.put("r2",s2);
         lex.REToDFA.put("r3",s3);
-        lex.DFAmerge();
+        lex.DFAmerge();*/
 
         /*for(Map.Entry<String,Set<Integer>> entry:s1.Dstates.entrySet()){
             System.out.println("FOR state "+entry.getKey()+" : ");

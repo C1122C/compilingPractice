@@ -5,40 +5,40 @@
 /*RE*/
 letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|v|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
 number 0|1|2|3|4|5|6|7|8|9
-id letter+(letter|number)*
-char letter|number
-int number+
+id {letter}+({letter}|{number})*
+int {number}+
 
 %%
-{letter} {return "Token<letter_"+out+">";}
-{number} {InstallNum(out);return "Token<number_"+out+">";}
-{id} {InstallID(out);return "Token<id_"+out+">";}
-{int} {InstallNum(out); return "Token<int_"+out+">";}
-else {return "<KW_ELSE>";}
-switch {return "<KW_SWITCH>";}
-break {return "<KW_BREAK>";}
-case {return "<KW_CASE>";}
-return {return "<KW_RETURN>";}
-for {return "<KW_FOR>";}
-void {return "<KW_VOID>";}
-continue {return "<KW_CONTINUE>";}
-default {return "<KW_DEFAULT>";}
-if {return "<KW_IF>";}
-static {return "<KW_STATIC>";}
-do {return "<KW_DO>";}
-while {return "<KW_WHILE>";}
-"-" {return "<OP_SUB>";}
-"/" {return "<OP_DEV>";}
-"--" {return "<OP_SUB_SELF>";}
-"==" {return "<OP_EQU>";}
-"=" {return "<OP_ASS>";}
-"!=" {return "<OP_N_EQU>";}
-">" {return "<OP_MORE>";}
-"<" {return "<OP_LESS>";}
-">=" {return "<OP_E_MORE>";}
-"<=" {return "<OP_E_LESS>";}
-"&&" {return "<OP_AND>";}
-"!" {return "<OP_NOT>";}
+{letter} {Token<letter_}
+{number} {Token<number_}
+{id} {Token<id_}
+{int} {Token<int_}
+else {<KW_ELSE>}
+switch {<KW_SWITCH>}
+break {<KW_BREAK>}
+case {<KW_CASE>}
+return {<KW_RETURN>}
+for {<KW_FOR>}
+void {<KW_VOID>}
+continue {<KW_CONTINUE>}
+default {<KW_DEFAULT>}
+if {<KW_IF>}
+static {<KW_STATIC>}
+do {<KW_DO>}
+while {<KW_WHILE>}
+"-" {<OP_SUB>}
+"/" {<OP_DEV>}
+"--" {<OP_SUB_SELF>}
+"==" {<OP_EQU>}
+"=" {<OP_ASS>}
+"!=" {<OP_N_EQU>}
+">" {<OP_MORE>}
+"<" {<OP_LESS>}
+">=" {<OP_E_MORE>}
+"<=" {<OP_E_LESS>}
+"&&" {<OP_AND>}
+"!" {<OP_NOT>}
+";" {<MARK_SEMICOLON}
 
 
 %%

@@ -40,8 +40,8 @@ public class LexCompiler{
     private Set<Character> alphabet;
     /*正则表达式-状态转换*/
     private Map<String,Map<Character,String>> map1;
-    /*原状态-新状态*/
-    private Map<String,String> map2;
+    /*新状态-原状态*/
+    private Map<String,Set<String>> map2;
     /*原状态-正则名称*/
     private Map<String,String> map3;
     /*状态合并工具*/
@@ -50,8 +50,10 @@ public class LexCompiler{
     /*状态-正则映射*/
     private Map<String,Set<String>> stateToRE;
     private ArrayList<String> order;
-    int lexBegin=0;
-    int forword=0;
+    private ArrayList<Character> chars;
+    private int forward;
+    private int line;
+
 
     public LexCompiler(){
         atom=new HashSet<Character>();
@@ -68,7 +70,7 @@ public class LexCompiler{
         codeType=2;
         part3=new ArrayList<Character>();
         map1=new HashMap<String,Map<Character,String>>();
-        map2=new HashMap<String,String>();
+        map2=new HashMap<String,Set<String>>();
         map3=new HashMap<String,String>();
         queue=new LinkedList<String>();
         finalID=0;
@@ -86,7 +88,7 @@ public class LexCompiler{
         readGrammar(file);
         for(String s:KWcode.keySet()){
             order.add(s);
-            re.put(s," "+s+" ");
+            re.put(s,s);
         }
         for(String s:OPcode.keySet()){
             order.add(s);
@@ -95,13 +97,28 @@ public class LexCompiler{
         //遍历文法，逐个生成DFA
         int i=0;
         for(String s:order){
+            //System.out.println("name: "+s+" des: "+re.get(s));
             DFA dfa=makeDFA(s,re.get(s),i);
+            /*for(Map.Entry<String,Set<Integer>> entry:dfa.Dstates.entrySet()){
+                System.out.println("FOR state "+entry.getKey()+" : ");
+                for(int j:entry.getValue()){
+                    System.out.print(j+", ");
+                }
+                System.out.print('\n');
+            }
+            for(Map.Entry<String,Map<Character,String>> entry:dfa.UsableDtran.entrySet()){
+                System.out.println("FOR state "+entry.getKey()+" : ");
+                for(Map.Entry<Character,String> en:entry.getValue().entrySet()){
+                    System.out.println("with "+en.getKey()+" : "+en.getValue());
+                }
+            }*/
             i++;
             REToDFA.put(s,dfa);
         }
         //状态合并
-        DFAmerge();
-        writeFile();
+        //DFAmerge();
+        //writeFile();
+        getTokens("test");
     }
 
     /**
@@ -137,12 +154,14 @@ public class LexCompiler{
             }
         }*/
         int count=0;
+        Set toadd=new HashSet<String>();
         for(String s:map1.keySet()){
             if(s.contains("-0-N")||s.contains("-0-T")){
                 count++;
-                map2.put(s,"I"+finalID);
+                toadd.add(s);
             }
         }
+        map2.put("I"+finalID,toadd);
         /*for(Map.Entry<String,String> entry:map2.entrySet()){
             System.out.println("GET: "+entry.getKey()+" WITH ID: "+entry.getValue());
         }*/
@@ -188,19 +207,19 @@ public class LexCompiler{
         ArrayList<String> originalS=new ArrayList<String>();
         ArrayList<Character> path=new ArrayList<Character>();
         ArrayList<String> destination=new ArrayList<String>();
-        Iterator<Map.Entry<String,String>> it=map2.entrySet().iterator();
+        Iterator<Map.Entry<String,Set<String>>> it=map2.entrySet().iterator();
         while(it.hasNext()){
-            Map.Entry<String,String> entry=it.next();
-            if(entry.getValue().equals(newState)){
-                originalS.add(entry.getKey());
-                System.out.println("s: "+entry.getKey()+" id: "+newState);
+            Map.Entry<String,Set<String>> entry=it.next();
+            if(entry.getKey().equals(newState)){
+                originalS.addAll(entry.getValue());
+                //System.out.println("s: "+entry.getKey()+" id: "+newState);
                 it.remove();
             }
         }
 
         for(String s:originalS){
             System.out.println("original is "+s);
-            System.out.println(map1.containsKey(s)+" "+map2.get(s));
+            //System.out.println(map1.containsKey(s)+" "+map2.get(s));
             for(Map.Entry<Character,String> entry:map1.get(s).entrySet()){
                 path.add(entry.getKey());
                 destination.add(entry.getValue());
@@ -243,14 +262,17 @@ public class LexCompiler{
                 for(char sid:ids){
                     newMap.put(sid,name);
                 }
-                for(String s:newOriginal){
-                    if(map2.keySet().contains(s)){
-                        map2.put(map2.get(s),name);
-                    }
-                    else{
-                        map2.put(s,name);
-                    }
+                Set<String> add=new HashSet<String>();
+                if(map2.keySet().contains(name)){
+                    map2.get(name).addAll(newOriginal);
                 }
+                else{
+                    for(String s:newOriginal){
+                        add.add(s);
+                    }
+                    map2.put(name,add);
+                }
+
                 newMap.put(check,name);
             }
             else{
@@ -261,18 +283,33 @@ public class LexCompiler{
             map1.remove(s);
         }
         map1.put(newState,newMap);
-        Iterator<Map.Entry<String,String>> iterator=map2.entrySet().iterator();
-        Set<String> ids=new HashSet<String>();
+        Iterator<Map.Entry<String,Set<String>>> iterator=map2.entrySet().iterator();
+        ArrayList<String> key=new ArrayList<String>();
+        ArrayList<Set<String>> value=new ArrayList<Set<String>>();
         while(iterator.hasNext()){
-            Map.Entry<String,String> entry=iterator.next();
-            if(originalS.contains(entry.getKey())){
-                String id=entry.getValue();
-                ids.add(id);
-                iterator.remove();
+            Map.Entry<String,Set<String>> entry=iterator.next();
+            Set<String> ids=new HashSet<String>();
+            boolean replace=false;
+            for(String str:entry.getValue()){
+                if(originalS.contains(str)){
+                    replace=true;
+                    break;
+                }
             }
+            if(replace){
+                for(String str:entry.getValue()){
+                    if(!originalS.contains(str)){
+                        ids.add(str);
+                    }
+                }
+                iterator.remove();
+                key.add(entry.getKey());
+                value.add(ids);
+            }
+
         }
-        for(String sid:ids){
-            map2.put(newState,sid);
+        for(int i=0;i<key.size();i++){
+            map2.put(key.get(i),value.get(i));
         }
         for(Map.Entry<String,Map<Character,String>> entry:map1.entrySet()){
             Map<Character,String> temp=new HashMap<Character,String>();
@@ -500,7 +537,7 @@ public class LexCompiler{
                 }
                 else{
                     //判断正则定义部分是否读完
-                    if(c=='\n'){
+                    if(c=='\n'||c=='\r'){
                         while(content.get(currentP)==' '||content.get(currentP)=='\n'||content.get(currentP)=='\r'){
                             currentP++;
                         }
@@ -638,7 +675,7 @@ public class LexCompiler{
                 part3.add(content.get(currentP));
             }
         }
-        /*test:System.out.println("COPY_PART:");
+        /*System.out.println("COPY_PART:");
         for(char ch:codeCopy){
             System.out.print(ch);
         }
@@ -956,6 +993,7 @@ public class LexCompiler{
      */
     private String preTransform(String in){
         String input=in;
+        //ystem.out.println("INTO PRE : "+in);
         while(input.contains("{")){
             String old=input;
             input="";
@@ -1020,6 +1058,8 @@ public class LexCompiler{
 
         withPoint=withPoint+ca[ca.length-1];
         withPoint=withPoint+"#";
+        //System.out.println("HERE?");
+        //System.out.println("AFTER POINT: "+withPoint.length());
         //System.out.println("we get "+input);
         String result="";
         Stack<Character> stack=new Stack<Character>();
@@ -1036,6 +1076,7 @@ public class LexCompiler{
         char cp[]=withPoint.toCharArray();
         char top;
         for(int i=0;i<cp.length;i++){
+            //System.out.println("time: "+i+" char: "+cp[i]);
             if(cp[i]=='#'){
                 while(!stack.empty()){
                     top=stack.pop();
@@ -1212,45 +1253,139 @@ public class LexCompiler{
         }
     }
 
-    public void getNextToken(String name){
-        ArrayList<String> reget=new ArrayList<String>();
-        String currentState;
-        boolean canNotGo=false;
-        currentState="I0";
-        boolean canOut=false;
-        ArrayList<Character> chars=new ArrayList<Character>();
+    public void getTokens(String name){
+        chars=new ArrayList<Character>();
+        forward=0;
+        line=1;
         try{
-            FileReader reader=new FileReader(name);
-            FileInputStream stream=new FileInputStream(name);
-            int in=stream.read();
+            FileInputStream fr=new FileInputStream(name);
+            BufferedReader reader=new BufferedReader(new InputStreamReader(fr,"UTF-8"));
+            int in=reader.read();
             while(in!=-1){
                 char c=(char)(in);
                 chars.add(c);
+                in=reader.read();
             }
-        }catch (FileNotFoundException e){
-            System.out.println("Sorry,we can not find a file with the given path.");
-        }catch(IOException e1){
+            reader.close();
+        }catch (Exception e){
+            System.out.println("not find file");
+        }
+
+        //System.out.println(chars.size());
+        boolean wrong=false;
+        while(forward<chars.size()&&(!wrong)){
+            wrong=getNextToken();
+        }
+
+    }
+
+    private boolean getNextToken(){
+        ArrayList<String> reget=new ArrayList<String>();
+        ArrayList<Integer> index=new ArrayList<Integer>();
+        ArrayList<String> currentState=new ArrayList<>();
+        ArrayList<String> currentRE=new ArrayList<String>();
+        ArrayList<Boolean> endLine=new ArrayList<Boolean>();
+        boolean canNotGo=false;
+        boolean reachEnd=false;
+        while(chars.get(forward)=='\n'||chars.get(forward)=='\r'){
+            forward++;
+            line++;
+            System.out.println("ADD ONCE!");
+            if(forward==chars.size()){
+                return true;
+            }
+        }
+        while(chars.get(forward)==' '){
+            forward++;
+            if(forward==chars.size()){
+                return true;
+            }
+        }
+        //System.out.println("MOVE TO: "+forward);
+
+        for(Map.Entry<String,DFA> entry:REToDFA.entrySet()){
+            for(Map.Entry<String,Map<Character,String>> en:entry.getValue().UsableDtran.entrySet()){
+                if(en.getKey().contains("-0-N")||en.getKey().contains("-0-T")){
+                    //System.out.println("GET RE: "+ entry.getKey()+" GET STATE: "+en.getKey());
+                    currentState.add(en.getKey());
+                    currentRE.add(entry.getKey());
+                }
+            }
+        }
+        for(int j=0;j<currentState.size();j++){
+            //System.out.println("IN RE: "+currentRE.get(j)+" IN STATE: "+currentState.get(j));
+            int head=forward;
+            canNotGo=false;
+            boolean end=false;
+            while(!canNotGo){
+                char now=chars.get(head);
+                head++;
+                //System.out.println("IN STATE: "+currentState.get(j));
+                //System.out.println("GET CHAR: "+now);
+                if(currentState.get(j).contains("T")){
+                    reget.add(currentRE.get(j));
+                    index.add(head);
+                    endLine.add(end);
+                    //System.out.println("ALREADY ADD, SIZE:"+reget.size());
+                }
+
+                if (now == '\n'||now=='\r') {
+                    break;
+                }
+                if(now==' '){
+                    break;
+                }
+                if(REToDFA.get(currentRE.get(j)).UsableDtran.get(currentState.get(j)).keySet().contains(now)){
+                    currentState.set(j,REToDFA.get(currentRE.get(j)).UsableDtran.get(currentState.get(j)).get(now));
+                }
+                else{
+                    canNotGo=true;
+                }
+                if(head==chars.size()){
+                    end=true;
+                    //System.out.println("OUT WHEN CHAR IS:"+now);
+                    break;
+                }
+            }
 
         }
-        while(!canNotGo){
-            Map router=(HashMap<Character,String>)map1.get(currentState);
-            char path=(Character)chars.get(forword);
-            if(stateToRE.containsKey(currentState)){
-                canOut=true;
-                reget.addAll(stateToRE.get(currentState));
-            }
-            if(router.containsKey(path)){
-                currentState=(String)router.get(path);
-                forword++;
-            }
-            else{
-                canNotGo=true;
-                forword--;
+        if(reget.size()==0){
+            System.out.println("GOT AN ERROR IN LINE "+line);
+            return true;
+        }
+        int longest=0;
+        for(int i=0;i<reget.size();i++){
+            if(index.get(i)>index.get(longest)){
+                longest=i;
             }
         }
-        String gainedRE=reget.get(reget.size()-1);
-        lexBegin=forword+1;
-        forword=lexBegin;
-        System.out.println(gainedRE);
+        String result=reget.get(longest);
+        String out="";
+        if(KWcode.keySet().contains(result)){
+            out=KWcode.get(result);
+        }
+        else if(REcode.keySet().contains(result)){
+            out=REcode.get(result);
+        }
+        else if(OPcode.keySet().contains(result)){
+            out=OPcode.get(result);
+        }
+        if(!out.contains(">")){
+            int i=forward;
+            while(i<index.get(longest)-1){
+                out=out+chars.get(i);
+                i++;
+            }
+            if(index.get(longest)==chars.size()){
+                out=out+chars.get(chars.size()-1);
+            }
+            out=out+">";
+        }
+        forward=index.get(longest)-1;
+        System.out.println(out);
+        if(index.get(longest)==chars.size()){
+            return true;
+        }
+        return false;
     }
 }
