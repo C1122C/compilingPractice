@@ -6,13 +6,13 @@
 letter a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|v|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
 number 0|1|2|3|4|5|6|7|8|9
 id {letter}+({letter}|{number})*
-int {number}+
+integer {number}+
 
 %%
 {letter} {Token<letter_}
 {number} {Token<number_}
 {id} {Token<id_}
-{int} {Token<int_}
+{integer} {Token<int_}
 else {<KW_ELSE>}
 switch {<KW_SWITCH>}
 break {<KW_BREAK>}
@@ -26,6 +26,7 @@ if {<KW_IF>}
 static {<KW_STATIC>}
 do {<KW_DO>}
 while {<KW_WHILE>}
+"%" {<OP_MOD>}
 "-" {<OP_SUB>}
 "/" {<OP_DEV>}
 "--" {<OP_SUB_SELF>}
@@ -39,6 +40,19 @@ while {<KW_WHILE>}
 "&&" {<OP_AND>}
 "!" {<OP_NOT>}
 ";" {<MARK_SEMICOLON}
+":" {<MARK_COLON>}
+"," {<MARK_COMMA>}
+"$*" {<OP_MUL>}
+"$(" {<MARK_LEFT_PARENTHESIS>}
+"$)" {<MARK_RIGHT_PARENTHESIS>}
+"$+" {<OP_ADD>}
+"$|" {<OP_OR>}
+"${" {<MARK_LEFT_BRACE>}
+"$}" {<MARK_RIGHT_BRACE>}
+"$[" {<MARK_LEFT_BRACKET>}
+"$]" {<MARK_RIGHT_BRACKET>}
+"$." {<MARK_POINT>}
+"$?" {<MARK_QUESTION>}
 
 
 %%
