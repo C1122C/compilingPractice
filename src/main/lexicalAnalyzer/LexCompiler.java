@@ -118,7 +118,7 @@ public class LexCompiler{
     /**
      * DFA合成
      */
-    public void DFAmerge(){
+    private void DFAmerge(){
         for(Map.Entry<String,DFA> entry:REToDFA.entrySet()){
             String rere=entry.getKey();
             System.out.println("GET RE: "+rere);
