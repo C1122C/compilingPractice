@@ -58,6 +58,7 @@ public class LexCompiler{
     private int forward;
     /*行号*/
     private int line;
+    private ArrayList<String> output;
 
 
     public LexCompiler(){
@@ -82,6 +83,7 @@ public class LexCompiler{
         stateToRE=new HashMap<String,Set<String>>();
         codeCopy=new ArrayList<Character>();
         order=new ArrayList<String>();
+        output=new ArrayList<String>();
     }
 
     /**
@@ -110,6 +112,7 @@ public class LexCompiler{
         //DFAmerge();
         //writeFile();
         getTokens("test");
+        outpuFile();
     }
 
     /**
@@ -1391,9 +1394,34 @@ public class LexCompiler{
         }
         forward=index.get(longest);
         System.out.println(out);
+        output.add(out);
         if(index.get(longest)==chars.size()){
             return true;
         }
         return false;
+    }
+
+    /**
+     * 输出Tokens到文件
+     */
+    private void outpuFile(){
+        try{
+            File out=new File("output");
+            FileOutputStream fw=new FileOutputStream(out);
+            OutputStreamWriter writer=new OutputStreamWriter(fw,"UTF-8");
+            for(int i=0;i<output.size();i++){
+                writer.append(output.get(i));
+                writer.append("\n");
+            }
+            writer.flush();
+            writer.close();
+        }catch(FileNotFoundException e){
+            e.printStackTrace();
+        }catch(UnsupportedEncodingException e){
+            e.printStackTrace();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+
     }
 }
