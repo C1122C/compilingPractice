@@ -1,5 +1,6 @@
 package main.syntaxAnalyzer;
 
+import main.dataStructure.LR1Item;
 import main.dataStructure.Production;
 import main.dataStructure.V;
 
@@ -8,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.Stack;
+import java.util.LinkedList;
 
 public class syntaxCompiler {
 
@@ -15,16 +17,19 @@ public class syntaxCompiler {
     private final String startIcon="$L";
     private final String endIcon="$R";
     private final String leadTo="->";
-    private ArrayList<String> originalCFG;
+    private Map<Integer,String> originalCFG;
     private Map<String,V> allMark;
     private ArrayList<V> sortedMark;
     private Set<String> allVTName;
     private Set<String> allVNName;
     private Set<String> allProductionName;//之后不要再用
     private String startMark;
+    private String originalStart;
     private Stack<String> stateStack;
     private Stack<String> markStack;
     private ArrayList<String> input;
+    private Map<String,Set<LR1Item>> stateToSet;//C
+    private Map<String,Map<String,String>> stateChange;
     private Map<String,Map<String,String>> action;
     private Map<String,Map<String,String>> GOTO;
 
@@ -52,9 +57,11 @@ public class syntaxCompiler {
             BufferedReader reader=new BufferedReader(new InputStreamReader(fr,"UTF-8"));
             String s;
             s=reader.readLine();
+            int i=1;
             while(s!=null){
-                originalCFG.add(s);
+                originalCFG.put(i,s);
                 s=reader.readLine();
+                i++;
             }
             reader.close();
         }catch (Exception e){
@@ -79,11 +86,11 @@ public class syntaxCompiler {
     }
 
     private void resolveCFG(){
-        for(String s:originalCFG){
+        for(String s:originalCFG.values()){
             String temp[]=s.split(leadTo);
             allVNName.add(temp[0]);
         }
-        for(String s:originalCFG){
+        for(String s:originalCFG.values()){
             String temp[]=s.split(leadTo);
             if(allMark.keySet().contains(temp[0])){
                 V original=allMark.get(temp[0]);
@@ -185,14 +192,14 @@ public class syntaxCompiler {
     private void getStartMark(){
         for(String s:allVNName){
             if(!allProductionName.contains(s)){
-                startMark=s;
+                originalStart=s;
                 break;
             }
         }
         V v=new V("CC",VType.VN);
         Production p=new Production();
         ArrayList<V> temp=p.getList();
-        temp.add(allMark.get(startMark));
+        temp.add(allMark.get(originalStart));
         p.setList(temp);
         Set<Production> result=v.getPros();
         result.add(p);
@@ -260,5 +267,111 @@ public class syntaxCompiler {
         }
         v.setFollow(result);
         return v;
+    }
+
+    private Set<LR1Item> closure(Set<LR1Item> lr1){
+        int oldsize=lr1.size();
+        int newsize=lr1.size();
+        boolean haveBeta=true;
+
+        do{
+            oldsize=newsize;
+            for(LR1Item item:lr1){
+                int pos=item.getPointPos();
+                V b=item.getRight().get(pos);
+                V beta=new V("",VType.VT);
+                if(pos==item.getRight().size()-1){
+                    haveBeta=false;
+                }
+                else{
+                    beta=item.getRight().get(pos+1);
+                }
+                Set<String> terminal= new HashSet<String>();
+                if(haveBeta){
+                    terminal=beta.getFirst();
+                    if(beta.getFirst().contains(epsilon)){
+                        terminal.remove(epsilon);
+                        terminal.add(item.getMark());
+                    }
+                }
+                else{
+                    terminal.add(item.getMark());
+                }
+                for(Production p:b.getPros()){
+                    ArrayList<V> list=p.getList();
+                    for(String s:terminal){
+                        boolean alreadyHave=false;
+                        LR1Item lr1Item=new LR1Item(b,list,0,s);
+                        for(LR1Item lr1Item11:lr1){
+                            if(lr1Item11.toString().equals(lr1Item.toString())){
+                                alreadyHave=true;
+                                break;
+                            }
+                        }
+                        if(alreadyHave){
+                            continue;
+                        }
+                        else{
+                            lr1.add(lr1Item);
+                        }
+                    }
+                }
+
+            }
+            newsize=lr1.size();
+        }while(oldsize!=newsize);
+        return lr1;
+    }
+
+    private Set<LR1Item> Goto(String state,String path){
+        Set<LR1Item> original=stateToSet.get(state);
+        Set<LR1Item> result=new HashSet<LR1Item>();
+        for(LR1Item lr1Item:original){
+            int pos=lr1Item.getPointPos();
+            if(pos<lr1Item.getRight().size()){
+                if(lr1Item.getRight().get(pos).getName().equals(path)){
+                    LR1Item newlr1=new LR1Item(lr1Item.getLeft(),lr1Item.getRight(),pos+1,lr1Item.getMark());
+                    result.add(newlr1);
+                }
+            }
+        }
+        return closure(result);
+    }
+
+    private void getItems(){
+        String pre="I";
+        int count=0;
+        V v1=allMark.get(startMark);
+        V v2=allMark.get(originalStart);
+        ArrayList<V> firstList=new ArrayList<V>();
+        firstList.add(v2);
+        LR1Item item1=new LR1Item(v1,firstList,0,endIcon);
+        Set<LR1Item> firstSet=new HashSet<LR1Item>();
+        firstSet.add(item1);
+        String name=pre+count;
+        Set<LR1Item> first=closure(firstSet);
+        stateToSet.put(name,first);
+        count++;
+        int oldSize=stateToSet.size();
+        int newSize=stateToSet.size();
+        do{
+            oldSize=newSize;
+            Map<String,Map<String,String>> map=new HashMap<String,Map<String,String>>();
+            for(Map.Entry<String,Set<LR1Item>> entry:stateToSet.entrySet()){
+                Map<String,String> map1=new HashMap<String,String>();
+                for(String path:allMark.keySet()){
+                    Set<LR1Item> news=Goto(entry.getKey(),path);
+                    if(news.size()>0&&!stateToSet.values().contains(news)){
+                        name=pre+count;
+                        count++;
+                        stateToSet.put(name,news);
+                        map1.put(path,name);
+                    }
+                }
+                map.put(entry.getKey(),map1);
+            }
+            newSize=stateToSet.size();
+        }while(oldSize!=newSize);
+
     }
 }
