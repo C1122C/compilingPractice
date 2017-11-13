@@ -21,6 +21,9 @@ public class V{
         this.name = name;
         this.type = type;
         isEpsilon=false;
+        if(name.equals("epsilon")){
+            isEpsilon=true;
+        }
         haveEpsilon=false;
         first=new HashSet<String>();
         follow=new HashSet<String>();
@@ -32,27 +35,23 @@ public class V{
         return haveEpsilon;
     }
 
-    public void setHaveEpsilon(boolean haveEpsilon) {
-        this.haveEpsilon = haveEpsilon;
-    }
-
 
     public Set<Production> getPros() {
         return pros;
     }
 
-    public void setPros(Set pros) {
+    public void setPros(Set<Production> pros) {
         this.pros = pros;
+        for(Production p:pros){
+            if(p.getList().size()==1&&p.getList().get(0).isEpsilon){
+                this.haveEpsilon=true;
+            }
+        }
     }
 
     public boolean isEpsilon() {
         return isEpsilon;
     }
-
-    public void setEpsilon(boolean epsilon) {
-        isEpsilon = epsilon;
-    }
-
 
     public void setFirst(Set first) {
         this.first = first;
@@ -72,10 +71,9 @@ public class V{
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public void setType(VType type) {
-        this.type = type;
+        if(name.equals("epsilon")){
+            isEpsilon=true;
+        }
     }
 
 

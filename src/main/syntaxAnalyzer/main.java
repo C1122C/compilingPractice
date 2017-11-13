@@ -1,11 +1,11 @@
 package main.syntaxAnalyzer;
 
 
-import main.lexicalAnalyzer.LexCompiler;
+import main.syntaxAnalyzer.syntaxCompiler;
 
 public class main {
     public static void main(String args[]){
-        LexCompiler lex=new LexCompiler();
-        lex.getLex("lexFile");
+        syntaxCompiler compiler=new syntaxCompiler();
+        compiler.syntax("CFG","test");
     }
 }

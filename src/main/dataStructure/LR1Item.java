@@ -6,20 +6,28 @@ public class LR1Item {
     private V left;
     private ArrayList<V> right;
     private int pointPos;
-    private String mark;
+    private ArrayList<String>  mark;
 
-    public LR1Item(V l, ArrayList<V> r, int p, String m){
+    public LR1Item(V l,int p){
+        mark=new ArrayList<String>();
+        right=new ArrayList<V>();
         left=l;
-        right=r;
         pointPos=p;
-        mark=m;
     }
 
-    public String getMark() {
+    public void addRight(V v){
+        right.add(v);
+    }
+
+    public void addMark(String v){
+        mark.add(v);
+    }
+
+    public ArrayList<String> getMark() {
         return mark;
     }
 
-    public void setMark(String mark) {
+    public void setMark(ArrayList<String> mark) {
         this.mark = mark;
     }
 
@@ -57,7 +65,28 @@ public class LR1Item {
             result=result+right.get(i).getName();
         }
         result=result+",";
-        result=result+mark;
+        for(int i=0;i<mark.size();i++){
+            if(i>0){
+                result=result+"|";
+            }
+            result=result+mark.get(i);
+        }
         return result;
+    }
+
+    public String getString(){
+        String result=left.getName();
+        result=result+"->";
+        for(int i=0;i<right.size();i++){
+            result=result+right.get(i).getName();
+        }
+        return result;
+    }
+
+    public boolean equals(LR1Item lr1Item){
+        if(this.toString().equals(lr1Item.toString())){
+            return true;
+        }
+        return false;
     }
 }
