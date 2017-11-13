@@ -51,12 +51,9 @@ public class syntaxCompiler {
 
     public void syntax(String Cpath,String Fpath){
         readCFG(Cpath);
-        for(Map.Entry<Integer,String> entry:originalCFG.entrySet()){
-            System.out.println(entry.getKey()+" : "+entry.getValue());
-        }
-        /*readFile(Fpath);
+        readFile(Fpath);
         resolveCFG();
-        getStartMark();
+        /*getStartMark();
         sort();
         for(int i=sortedMark.size()-1;i>=0;i--){
             V temp=first(sortedMark.get(i));
@@ -100,7 +97,7 @@ public class syntaxCompiler {
             String s=reader.readLine();
             while(s!=null){
                 s=s+endIcon;
-                input.add(s+endIcon);
+                input.add(s);
                 s=reader.readLine();
             }
             reader.close();
@@ -114,6 +111,7 @@ public class syntaxCompiler {
             String temp[]=s.split(leadTo);
             allVNName.add(temp[0]);
         }
+        allVTName.add(endIcon);
         for(String s:originalCFG.values()){
             String temp[]=s.split(leadTo);
             if(allMark.keySet().contains(temp[0])){
