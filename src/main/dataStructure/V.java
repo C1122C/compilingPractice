@@ -16,6 +16,8 @@ public class V{
     private Set<String> prosInString;
     private boolean isEpsilon;
     private boolean haveEpsilon;
+    public boolean finishFirst;
+    public boolean finishfollow;
 
     public V(String name, VType type) {
         this.name = name;
@@ -29,6 +31,8 @@ public class V{
         follow=new HashSet<String>();
         pros=new HashSet<Production>();
         prosInString=new HashSet<String>();
+        finishFirst=false;
+        finishfollow=false;
     }
 
     public boolean isHaveEpsilon() {
