@@ -22,7 +22,6 @@ public class syntaxCompiler {
     private Set<String> allVNName;
     private Set<String> allProductionName;
     private String startMark;
-    private String originalStart;
     private ArrayList<String> input;
     private ArrayList<String> STState;
     private ArrayList<Set<LR1Item>> STSet;
@@ -39,7 +38,6 @@ public class syntaxCompiler {
         allVNName=new HashSet<String>();
         allProductionName=new HashSet<String>();
         startMark="";
-        originalStart="";
         input=new ArrayList<String>();
         STState=new ArrayList<String>();
         STSet=new ArrayList<Set<LR1Item>>();
@@ -53,18 +51,21 @@ public class syntaxCompiler {
         readCFG(Cpath);
         readFile(Fpath);
         resolveCFG();
-        /*getStartMark();
-        sort();
-        for(int i=sortedMark.size()-1;i>=0;i--){
-            V temp=first(sortedMark.get(i));
-            sortedMark.set(i,temp);
-            allMark.replace(sortedMark.get(i).getName(),temp);
+        getStartMark();
+        //sort();
+
+        for(Map.Entry<String,V> entry:allMark.entrySet()){
+            V v=entry.getValue();
+            V temp=first(v);
+            temp=follow(v);
+            allMark.replace(entry.getKey(),temp);
+            /*System.out.print(entry.getKey()+" : ");
+            for(String s:temp.getFollow()){
+                System.out.print(s+",");
+            }
+            System.out.print("\n");*/
         }
-        for(int i=0;i<sortedMark.size();i++){
-            V temp=follow(sortedMark.get(i));
-            sortedMark.set(i,temp);
-            allMark.replace(sortedMark.get(i).getName(),temp);
-        }
+        /*
         getItems();
         LRTable();
         getSquence();
@@ -79,6 +80,12 @@ public class syntaxCompiler {
             s=reader.readLine();
             int i=1;
             while(s!=null){
+                if(i==1){
+                    String l[]=s.split(leadTo);
+                    String str="CC->"+l[0];
+                    originalCFG.put(i,str);
+                    i++;
+                }
                 originalCFG.put(i,s);
                 s=reader.readLine();
                 i++;
@@ -117,7 +124,7 @@ public class syntaxCompiler {
             if(allMark.keySet().contains(temp[0])){
                 V original=allMark.get(temp[0]);
                 Set<Production> result=original.getPros();
-                Production toAdd=resolvePro(temp[1]);
+                Production toAdd=resolvePro(temp[1],temp[0]);
                 result.add(toAdd);
                 original.setPros(result);
                 allMark.replace(temp[0],original);
@@ -125,7 +132,7 @@ public class syntaxCompiler {
             else{
                 V vn=new V(temp[0],VType.VN);
                 Set<Production> result=new HashSet<Production>();
-                Production toAdd=resolvePro(temp[1]);
+                Production toAdd=resolvePro(temp[1],temp[0]);
                 result.add(toAdd);
                 vn.setPros(result);
                 allMark.put(temp[0],vn);
@@ -133,7 +140,7 @@ public class syntaxCompiler {
         }
     }
 
-    private Production resolvePro(String s){
+    private Production resolvePro(String s,String flag){
         char check[]=s.toCharArray();
         Production result=new Production();
         ArrayList<V> l=new ArrayList<V>();
@@ -166,7 +173,10 @@ public class syntaxCompiler {
                     allMark.put(c,v);
                     l.add(v);
                 }
-                allProductionName.add(c);
+                if(!flag.equals(c)){
+                    //System.out.println(flag+" "+c);
+                    allProductionName.add(c);
+                }
             }
         }
         if(vt.length()>0){
@@ -214,22 +224,11 @@ public class syntaxCompiler {
     private void getStartMark(){
         for(String s:allVNName){
             if(!allProductionName.contains(s)){
-                originalStart=s;
+                //System.out.println("GET IN");
+                startMark=s;
                 break;
             }
         }
-        V v=new V("CC",VType.VN);
-        Production p=new Production();
-        ArrayList<V> temp=p.getList();
-        temp.add(allMark.get(originalStart));
-        p.setList(temp);
-        Set<Production> result=v.getPros();
-        result.add(p);
-        v.setPros(result);
-        allMark.put("CC",v);
-        allVNName.add("CC");
-        startMark="CC";
-
     }
 
     private V first(V v){
@@ -244,42 +243,70 @@ public class syntaxCompiler {
             for(Production production:v.getPros()){
                 int i=0;
                 ArrayList<V> check=production.getList();
-                while(i<check.size()&&check.get(i).getFirst().contains(epsilon)){
-                    Set<String> temp=check.get(i).getFirst();
-                    temp.remove(epsilon);
+                do{
+                    if(check.get(i).getName().equals(v.getName())&&i==0){
+                        break;
+                    }
+                    if(!allMark.get(check.get(i).getName()).finishFirst){
+                        allMark.replace(check.get(i).getName(),first(allMark.get(check.get(i).getName())));
+                    }
+                    Set<String> temp=allMark.get(check.get(i).getName()).getFirst();
+                    if(i!=check.size()-1){
+                        temp.remove(epsilon);
+                    }
                     result.addAll(temp);
                     i++;
-                }
-                if(i==check.size()&&check.get(i).getFirst().contains(epsilon)){
-                    result.add(epsilon);
-                }
+                }while(i<check.size()&&allMark.get(check.get(i).getName()).getFirst().contains(epsilon));
+
             }
         }
         v.setFirst(result);
+        v.finishFirst=true;
         return v;
     }
 
     private V follow(V v){
-        Set<String> result=new HashSet<String>();
+        if(v.getType()==VType.VT){
+            return v;
+        }
+        Set<String> result=v.getFollow();
         if(v.getName().equals(startMark)){
             result.add(endIcon);
         }
         else{
-            for(V vv:allMark.values()){
+            for(Map.Entry<String,V> entry:allMark.entrySet()){
+                V vv=entry.getValue();
                 Set<Production> p=vv.getPros();
                 for(Production prod:p){
                     for(int i=0;i<prod.getList().size();i++){
                         if(prod.getList().get(i).getName().equals(v.getName())){
                             if(i==prod.getList().size()-1){
+                                if(!vv.finishfollow){
+                                    vv=follow(vv);
+                                }
                                 result.addAll(vv.getFollow());
                             }
                             else{
-                                V behind=prod.getList().get(i+1);
-                                Set<String> toadd=behind.getFirst();
-                                if(toadd.contains(epsilon)){
-                                    result.addAll(vv.getFollow());
-                                    toadd.remove(epsilon);
-                                }
+                                int j=1;
+                                Set<String> toadd=new HashSet<String>();
+                                do{
+                                    V behind=prod.getList().get(i+j);
+                                    if(behind.getType()==VType.VT){
+                                        result.add(behind.getName());
+                                        break;
+                                    }
+                                    j++;
+                                    toadd=behind.getFirst();
+                                    Set<String> st=toadd;
+                                    st.remove(epsilon);
+                                    result.addAll(st);
+                                    if(j+i==prod.getList().size()&&toadd.contains(epsilon)){
+                                        if(!vv.finishfollow){
+                                            vv=follow(vv);
+                                        }
+                                        result.addAll(vv.getFollow());
+                                    }
+                                }while(toadd.contains(epsilon)&&(i+j<prod.getList().size()));
                                 result.addAll(toadd);
                             }
                         }
@@ -288,6 +315,7 @@ public class syntaxCompiler {
             }
         }
         v.setFollow(result);
+        v.finishfollow=true;
         return v;
     }
 
@@ -368,9 +396,12 @@ public class syntaxCompiler {
         String pre="I";
         int count=0;
         V v1=allMark.get(startMark);
-        V v2=allMark.get(originalStart);
         ArrayList<V> firstList=new ArrayList<V>();
-        firstList.add(v2);
+        for(Production p:v1.getPros()){
+            for(V v:p.getList()){
+                firstList.add(v);
+            }
+        }
         LR1Item item1=new LR1Item(v1,0);
         item1.setRight(firstList);
         item1.addMark(endIcon);
@@ -437,10 +468,9 @@ public class syntaxCompiler {
     }
 
     private void LRTable(){
-        String s=startMark+"->."+originalStart+","+endIcon;
         for(Map.Entry<String,Map<String,String>> entry1:stateChange.entrySet()){
             String stateName=entry1.getKey();
-            if(stateName.equals(s)){
+            if(stateName.equals("I0")){
                 Map<String,String> tempMap=new HashMap<String,String>();
                 tempMap.put(endIcon,acc);
                 action.put(stateName,tempMap);
