@@ -64,6 +64,9 @@ public class LR1Item {
             }
             result=result+right.get(i).getName();
         }
+        if(pointPos==right.size()){
+            result=result+".";
+        }
         result=result+",";
         for(int i=0;i<mark.size();i++){
             if(i>0){
