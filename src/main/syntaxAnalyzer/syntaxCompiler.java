@@ -52,7 +52,6 @@ public class syntaxCompiler {
         readFile(Fpath);
         resolveCFG();
         getStartMark();
-        //sort();
 
         for(Map.Entry<String,V> entry:allMark.entrySet()){
             V v=entry.getValue();
@@ -65,9 +64,22 @@ public class syntaxCompiler {
             }
             System.out.print("\n");*/
         }
-        /*
+
         getItems();
-        LRTable();
+        /*for(int i=0;i<STState.size();i++){
+            System.out.println(STState.get(i)+" : ");
+            for(LR1Item l:STSet.get(i)){
+                System.out.println(l.toString());
+            }
+            System.out.println("------------------------------------------------");
+        }*/
+        for(Map.Entry<String,Map<String,String>> entry1:stateChange.entrySet()){
+            System.out.println(entry1.getKey()+" : ");
+            for(Map.Entry<String,String> entry2:entry1.getValue().entrySet()){
+                System.out.println("-"+entry2.getKey()+"->"+entry2.getValue());
+            }
+        }
+        /*LRTable();
         getSquence();
         outputFile();*/
     }
@@ -195,32 +207,6 @@ public class syntaxCompiler {
         return result;
     }
 
-    private void sort(){
-        ArrayList<String> link=new ArrayList<String>();
-        sortedMark.add(allMark.get(startMark));
-        link.addAll(allMark.get(startMark).getProsInString());
-        while(link.size()>0){
-            for(int i=0;i<link.size();i++){
-                boolean ok=true;
-                String check=link.get(i);
-                for(int j=0;j<link.size();j++){
-                    if(j!=i){
-                        if(allMark.get(link.get(j)).getProsInString().contains(check)){
-                            ok=false;
-                            break;
-                        }
-                    }
-                }
-                if(ok){
-                    sortedMark.add(allMark.get(check));
-                    link.remove(i);
-                    link.addAll(allMark.get(check).getProsInString());
-                    break;
-                }
-            }
-        }
-    }
-
     private void getStartMark(){
         for(String s:allVNName){
             if(!allProductionName.contains(s)){
@@ -281,10 +267,13 @@ public class syntaxCompiler {
                     for(int i=0;i<prod.getList().size();i++){
                         if(prod.getList().get(i).getName().equals(v.getName())){
                             if(i==prod.getList().size()-1){
-                                if(!vv.finishfollow){
-                                    vv=follow(vv);
+                                if(!vv.getName().equals(v.getName())){
+                                    if(!vv.finishfollow){
+                                        //System.out.println(vv.getName());
+                                        vv=follow(vv);
+                                    }
+                                    result.addAll(vv.getFollow());
                                 }
-                                result.addAll(vv.getFollow());
                             }
                             else{
                                 int j=1;
@@ -322,56 +311,87 @@ public class syntaxCompiler {
     private Set<LR1Item> closure(Set<LR1Item> lr1){
         int oldsize=lr1.size();
         int newsize=lr1.size();
-        boolean haveBeta=true;
-
+        ArrayList<LR1Item> gothrough=new ArrayList<LR1Item>();
+        for(LR1Item l:lr1){
+            gothrough.add(l);
+        }
         do{
             oldsize=newsize;
-            for(LR1Item item:lr1){
+            for(int i=0;i<gothrough.size();i++){
+                LR1Item item=gothrough.get(i);
+                //System.out.println(item.toString());
                 int pos=item.getPointPos();
-                V b=item.getRight().get(pos);
+                boolean haveBeta=true;
+                boolean end=false;
+                V b=new V("",VType.VT);
                 V beta=new V("",VType.VT);
-                if(pos==item.getRight().size()-1){
-                    haveBeta=false;
+                if(pos==item.getRight().size()){
+                    end=true;
+                    //System.out.println("IT`S END");
                 }
                 else{
-                    beta=item.getRight().get(pos+1);
-                }
-                Set<String> terminal= new HashSet<String>();
-                if(haveBeta){
-                    terminal=beta.getFirst();
-                    if(beta.getFirst().contains(epsilon)){
-                        terminal.remove(epsilon);
-                        terminal.addAll(item.getMark());
+                    b=item.getRight().get(pos);
+                    if(pos==item.getRight().size()-1){
+                        haveBeta=false;
+                        //System.out.println("DO NOT HAVE BETA");
+                    }
+                    else{
+                        beta=item.getRight().get(pos+1);
+                        //System.out.println("WE GOT ALL");
                     }
                 }
-                else{
-                    terminal.addAll(item.getMark());
-                }
-                for(Production p:b.getPros()){
-                    ArrayList<V> list=p.getList();
+
+                Set<String> terminal= new HashSet<String>();
+                if(!end){
+                    //System.out.println("GET IN!");
+                    if(haveBeta){
+                        terminal=beta.getFirst();
+                        if(beta.getFirst().contains(epsilon)){
+                            terminal.remove(epsilon);
+                            terminal.addAll(item.getMark());
+                        }
+                    }
+                    else{
+                        terminal.addAll(item.getMark());
+                    }
+                    //System.out.println("terminal is:");
                     for(String s:terminal){
-                        boolean alreadyHave=false;
-                        LR1Item lr1Item=new LR1Item(b,0);
-                        lr1Item.setRight(list);
-                        lr1Item.addMark(s);
-                        for(LR1Item lr1Item11:lr1){
-                            if(lr1Item11.toString().equals(lr1Item.toString())){
-                                alreadyHave=true;
-                                break;
+                        //System.out.println(s);
+                    }
+                    for(Production p:b.getPros()){
+                        ArrayList<V> list=p.getList();
+                        for(String s:terminal){
+                            boolean alreadyHave=false;
+                            LR1Item lr1Item=new LR1Item(b,0);
+                            lr1Item.setRight(list);
+                            lr1Item.addMark(s);
+                            //System.out.println("NEW ITEM: "+lr1Item.toString());
+                            for(LR1Item lr1Item11:gothrough){
+                                if(lr1Item11.toString().equals(lr1Item.toString())){
+                                    //System.out.println("EQUAL "+lr1Item11.toString());
+                                    alreadyHave=true;
+                                    break;
+                                }
                             }
-                        }
-                        if(alreadyHave){
-                            continue;
-                        }
-                        else{
-                            lr1.add(lr1Item);
+                            if(alreadyHave){
+                                continue;
+                            }
+                            else{
+                                gothrough.add(lr1Item);
+                                //System.out.println("ADD ONE!");
+                            }
                         }
                     }
                 }
 
             }
-            newsize=lr1.size();
+            //System.out.println("OK");
+            newsize=gothrough.size();
         }while(oldsize!=newsize);
+        lr1=new HashSet<LR1Item>();
+        for(LR1Item l:gothrough){
+            lr1.add(l);
+        }
         return lr1;
     }
 
@@ -406,6 +426,7 @@ public class syntaxCompiler {
         item1.setRight(firstList);
         item1.addMark(endIcon);
         Set<LR1Item> firstSet=new HashSet<LR1Item>();
+        //System.out.println(item1.toString());
         firstSet.add(item1);
         String name=pre+count;
         Set<LR1Item> first=closure(firstSet);
@@ -451,6 +472,12 @@ public class syntaxCompiler {
                         if(canAdd){
                             name=pre+count;
                             count++;
+                            /*System.out.println("------------------------------------------------");
+                            System.out.println(name+":");
+                            for(LR1Item l:news){
+                                System.out.println(l.toString());
+                            }
+                            System.out.println("------------------------------------------------");*/
                             STState.add(name);
                             STSet.add(news);
                             map1.put(path,name);
