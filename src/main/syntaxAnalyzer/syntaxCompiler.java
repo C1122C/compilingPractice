@@ -73,15 +73,22 @@ public class syntaxCompiler {
             }
             System.out.println("------------------------------------------------");
         }*/
-        for(Map.Entry<String,Map<String,String>> entry1:stateChange.entrySet()){
+        /*for(Map.Entry<String,Map<String,String>> entry1:stateChange.entrySet()){
             System.out.println(entry1.getKey()+" : ");
             for(Map.Entry<String,String> entry2:entry1.getValue().entrySet()){
                 System.out.println("-"+entry2.getKey()+"->"+entry2.getValue());
             }
         }
-        /*LRTable();
+        System.out.println("------------------------------------------------");*/
+        LRTable();
+        /*for(Map.Entry<String,Map<String,String>> entry1:GOTO.entrySet()){
+            System.out.println(entry1.getKey()+":");
+            for(Map.Entry<String,String> entry2:entry1.getValue().entrySet()){
+                System.out.println("-"+entry2.getKey()+"->"+entry2.getValue());
+            }
+        }*/
         getSquence();
-        outputFile();*/
+        //outputFile();
     }
 
     private void readCFG(String path){
@@ -478,6 +485,13 @@ public class syntaxCompiler {
                                 System.out.println(l.toString());
                             }
                             System.out.println("------------------------------------------------");*/
+                            for(LR1Item l:news){
+                                String s[]=l.toString().split(",");
+                                if(s[0].startsWith("CC")&&s[0].endsWith(".")){
+                                    name="."+name;
+                                    break;
+                                }
+                            }
                             STState.add(name);
                             STSet.add(news);
                             map1.put(path,name);
@@ -497,7 +511,10 @@ public class syntaxCompiler {
     private void LRTable(){
         for(Map.Entry<String,Map<String,String>> entry1:stateChange.entrySet()){
             String stateName=entry1.getKey();
-            if(stateName.equals("I0")){
+            //System.out.println("NOW "+stateName+": ");
+            if(stateName.startsWith(".")){
+                stateName=stateName.substring(1);
+                //System.out.println("CHANGE "+stateName);
                 Map<String,String> tempMap=new HashMap<String,String>();
                 tempMap.put(endIcon,acc);
                 action.put(stateName,tempMap);
@@ -506,17 +523,40 @@ public class syntaxCompiler {
             for(Map.Entry<String,String> entry2:entry1.getValue().entrySet()){
                 String path=entry2.getKey();
                 String des= entry2.getValue();
+                //System.out.println("GET PATH "+path);
+                //System.out.println("GET DES "+des);
                 Map<String,String> tempMap=new HashMap<String,String>();
-                if(allVTName.contains(path)){
-                    des=des.substring(1);
-                    des="S"+des;
-                    tempMap.put(path,des);
-                    action.put(stateName,tempMap);
+                if(des.startsWith(".")){
+                    des=des.substring(2);
                 }
                 else{
                     des=des.substring(1);
+                }
+                //System.out.println("NEW DES IS "+des);
+                if(allVTName.contains(path)){
+                    des="S"+des;
+                    //System.out.println("ADD "+des+" TO ACTION");
                     tempMap.put(path,des);
-                    GOTO.put(stateName,tempMap);
+                    if(action.keySet().contains(stateName)){
+                        Map<String,String> temp1=action.get(stateName);
+                        temp1.putAll(tempMap);
+                        action.replace(stateName,temp1);
+                    }
+                    else{
+                        action.put(stateName,tempMap);
+                    }
+                }
+                else{
+                    //System.out.println("ADD "+des+" TO GOTO");
+                    tempMap.put(path,des);
+                    if(GOTO.keySet().contains(stateName)){
+                        Map<String,String> temp1=GOTO.get(stateName);
+                        temp1.putAll(tempMap);
+                        GOTO.replace(stateName,temp1);
+                    }
+                    else{
+                        GOTO.put(stateName,tempMap);
+                    }
                 }
             }
         }
@@ -585,6 +625,8 @@ public class syntaxCompiler {
                             int num=Integer.parseInt(step);
                             String cfg=originalCFG.get(num);
                             String cfg1[]=cfg.split("->");
+                            System.out.println(cfg);
+                            output.add(cfg);
                             int lentgh=cfg1[1].length();
                             for(int j=0;j<lentgh;j++){
                                 stateStack.pop();
