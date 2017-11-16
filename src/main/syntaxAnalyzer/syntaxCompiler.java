@@ -17,7 +17,6 @@ public class syntaxCompiler {
     private final String acc="accept";
     private Map<Integer,String> originalCFG;
     private Map<String,V> allMark;
-    private ArrayList<V> sortedMark;
     private Set<String> allVTName;
     private Set<String> allVNName;
     private Set<String> allProductionName;
@@ -33,7 +32,6 @@ public class syntaxCompiler {
     public syntaxCompiler(){
         originalCFG=new HashMap<Integer,String>();
         allMark=new HashMap<String,V>();
-        sortedMark=new ArrayList<V>();
         allVTName=new HashSet<String>();
         allVNName=new HashSet<String>();
         allProductionName=new HashSet<String>();
