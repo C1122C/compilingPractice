@@ -56,7 +56,7 @@ public class syntaxCompiler {
         for(Map.Entry<String,V> entry:allMark.entrySet()){
             V v=entry.getValue();
             V temp=first(v);
-            temp=follow(v);
+            temp=follow(temp);
             allMark.replace(entry.getKey(),temp);
             /*System.out.print(entry.getKey()+" : ");
             for(String s:temp.getFollow()){
@@ -81,14 +81,14 @@ public class syntaxCompiler {
         }
         System.out.println("------------------------------------------------");*/
         LRTable();
-        /*for(Map.Entry<String,Map<String,String>> entry1:GOTO.entrySet()){
+        for(Map.Entry<String,Map<String,String>> entry1:action.entrySet()){
             System.out.println(entry1.getKey()+":");
             for(Map.Entry<String,String> entry2:entry1.getValue().entrySet()){
                 System.out.println("-"+entry2.getKey()+"->"+entry2.getValue());
             }
-        }*/
+        }
         getSquence();
-        //outputFile();
+        outputFile();
     }
 
     private void readCFG(String path){
@@ -597,57 +597,70 @@ public class syntaxCompiler {
         Stack<String> markStack=new Stack<String>();
         for(int i=0;i<input.size();i++){
             String s=input.get(i);
+            String show=s.substring(0,s.length()-2);
             char c[]=s.toCharArray();
             int point=0;
+            int count=1;
             stateStack.clear();
             markStack.clear();
             stateStack.push("I0");
             markStack.push(startIcon);
             String name="";
+            output.add("FOR SENTENCE "+show+" : ");
             while(point<c.length){
                 name=name+c[point];
                 point++;
+                String state=stateStack.peek();
+                //System.out.println("NOW STATE IS "+state);
                 if(allVTName.contains(name)){
-                    String state=stateStack.peek();
+                    //System.out.println("GET VT "+name);
                     if(action.keySet().contains(state)&&action.get(state).keySet().contains(name)){
                         String step=action.get(state).get(name);
+                        //System.out.println("TIP IS "+step);
                         if(step.equals(acc)){
-                            System.out.println("ONE SENTENCE COMPLETE!");
-                            output.add("ONE SENTENCE COMPLETE!");
+                            System.out.println("SENTENCE "+show+" COMPLETE!");
+                            output.add("SENTENCE "+show+" COMPLETE!");
                         }
                         else if(step.startsWith("S")){
                             step=step.substring(1);
                             stateStack.push("I"+step);
                             markStack.push(name);
+                            //System.out.println("GOTO STATE "+step);
                         }
                         else if(step.startsWith("R")){
                             step=step.substring(1);
                             int num=Integer.parseInt(step);
                             String cfg=originalCFG.get(num);
                             String cfg1[]=cfg.split("->");
-                            System.out.println(cfg);
-                            output.add(cfg);
-                            int lentgh=cfg1[1].length();
-                            for(int j=0;j<lentgh;j++){
+                            System.out.println("R"+count+" : "+cfg);
+                            output.add("R"+count+" : "+cfg);
+                            count++;
+                            int length=cfg1[1].length();
+                            for(int j=0;j<length;j++){
                                 stateStack.pop();
                                 markStack.pop();
                             }
+
                             if(GOTO.keySet().contains(stateStack.peek())&&GOTO.get(stateStack.peek()).keySet().contains(cfg1[0])){
                                 String newState=GOTO.get(stateStack.peek()).get(cfg1[0]);
+                                newState="I"+newState;
                                 stateStack.push(newState);
                                 markStack.push(cfg1[0]);
                                 point--;
+                                if(name.equals(endIcon)){
+                                    point--;
+                                }
                             }
                             else{
-                                System.out.println("ERROR IN LINE "+i+" .");
-                                output.add("ERROR IN LINE "+i+" .");
+                                System.out.println("ERROR IN LINE "+(i+1)+" . GOTO WRONG .STATE IS "+stateStack.peek()+" PATH IS "+cfg1[0]);
+                                output.add("ERROR IN LINE "+(i+1)+" .");
                                 return;
                             }
                         }
                     }
                     else{
-                        System.out.println("ERROR IN LINE "+i+" .");
-                        output.add("ERROR IN LINE "+i+" .");
+                        System.out.println("ERROR IN LINE "+(i+1)+" . ACTION WRONG. VT IS "+name);
+                        output.add("ERROR IN LINE "+(i+1)+" .");
                         return;
                     }
                     name="";

@@ -1,0 +1,60 @@
+FOR SENTENCE ee : 
+R1 : D->e
+R2 : D->e
+R3 : E->DD
+SENTENCE ee COMPLETE!
+FOR SENTENCE dede : 
+R1 : D->e
+R2 : D->dD
+R3 : D->e
+R4 : D->dD
+R5 : E->DD
+SENTENCE dede COMPLETE!
+FOR SENTENCE dee : 
+R1 : D->e
+R2 : D->dD
+R3 : D->e
+R4 : E->DD
+SENTENCE dee COMPLETE!
+FOR SENTENCE dddedde : 
+R1 : D->e
+R2 : D->dD
+R3 : D->dD
+R4 : D->dD
+R5 : D->e
+R6 : D->dD
+R7 : D->dD
+R8 : E->DD
+SENTENCE dddedde COMPLETE!
+FOR SENTENCE deddddde : 
+R1 : D->e
+R2 : D->dD
+R3 : D->e
+R4 : D->dD
+R5 : D->dD
+R6 : D->dD
+R7 : D->dD
+R8 : D->dD
+R9 : E->DD
+SENTENCE deddddde COMPLETE!
+FOR SENTENCE edddddde : 
+R1 : D->e
+R2 : D->e
+R3 : D->dD
+R4 : D->dD
+R5 : D->dD
+R6 : D->dD
+R7 : D->dD
+R8 : D->dD
+R9 : E->DD
+SENTENCE edddddde COMPLETE!
+FOR SENTENCE dddddee : 
+R1 : D->e
+R2 : D->dD
+R3 : D->dD
+R4 : D->dD
+R5 : D->dD
+R6 : D->dD
+R7 : D->e
+R8 : E->DD
+SENTENCE dddddee COMPLETE!
